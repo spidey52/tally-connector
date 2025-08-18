@@ -1,0 +1,17 @@
+
+@base_url = http://localhost:9999
+
+
+### fetch ledgers
+GET {{base_url}}/fetch-ledgers
+
+
+### fetch companies
+GET {{base_url}}/fetch-companies
+
+### create voucher
+POST {{base_url}}/create-voucher
+
+
+###
+GET {{base_url}}/fetch-vouchers
