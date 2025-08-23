@@ -2,6 +2,8 @@ package handler
 
 import (
 	"context"
+	"log"
+	"tally-connector/cmd/api/middlewares"
 	"tally-connector/cmd/db"
 	"tally-connector/cmd/models"
 
@@ -11,9 +13,11 @@ import (
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
 
-func getNameBySearch(ledgerName string) (string, error) {
+func getNameBySearch(ctx context.Context, ledgerName string) (string, error) {
+	if ledgerName == "" {
+		return "", nil
+	}
 	var name string
-	var ctx = context.Background()
 
 	err := db.GetDB().QueryRow(ctx, "SELECT name FROM mst_ledger WHERE name = $1 OR alias = $1", ledgerName).Scan(&name)
 	if err != nil {
@@ -23,10 +27,27 @@ func getNameBySearch(ledgerName string) (string, error) {
 	return name, nil
 }
 
-func FetchVoucherHandler(c *gin.Context) {
-	var ledger_name = c.DefaultQuery("ledger_name", "")
+type VoucherQueryParams struct {
+	middlewares.PaginationParams
+	LedgerName  string `form:"ledger_name"`
+	VoucherType string `form:"voucher_type"`
+}
 
-	name, err := getNameBySearch(ledger_name)
+func FetchVoucherHandler(c *gin.Context) {
+	var queryParams VoucherQueryParams
+	err := c.ShouldBindQuery(&queryParams)
+	if err != nil {
+		log.Println("Error in binding query ", err)
+		c.JSON(400, gin.H{
+			"error":   err.Error(),
+			"message": "Invalid query parameters",
+		})
+		return
+	}
+
+	var ctx = c.Request.Context()
+
+	name, err := getNameBySearch(ctx, queryParams.LedgerName)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error":   err.Error(),
@@ -35,13 +56,15 @@ func FetchVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	var vouchers []models.TrnVoucher
+	var vouchers = []models.TrnVoucher{}
 	var count int64
 
 	q := psql.Select(
 		sm.Columns("guid", "date", "party_name", "voucher_type", "voucher_number", "narration"),
 		sm.From("trn_voucher"),
-		sm.Limit(10),
+		sm.Limit(queryParams.Limit),
+		sm.Offset(queryParams.Page*queryParams.Limit),
+		sm.OrderBy("date ASC"),
 	)
 
 	countQuery := psql.Select(
@@ -49,11 +72,38 @@ func FetchVoucherHandler(c *gin.Context) {
 		sm.From("trn_voucher"),
 	)
 
-	var nameFilter = sm.Where(psql.Quote("party_name").EQ(psql.Arg(name)))
-
 	if name != "" {
+		var nameFilter = sm.Where(psql.Quote("party_name").EQ(psql.Arg(name)))
 		q.Apply(nameFilter)
 		countQuery.Apply(nameFilter)
+	}
+
+	if queryParams.Search != "" {
+		searchFilter := sm.Where(
+			psql.Or(
+				psql.Quote("narration").ILike(psql.Arg("%"+queryParams.Search+"%")),
+				psql.Quote("party_name").ILike(psql.Arg("%"+queryParams.Search+"%")),
+			),
+		)
+		q.Apply(searchFilter)
+		countQuery.Apply(searchFilter)
+	}
+
+	if queryParams.StartDate != "" && queryParams.EndDate != "" {
+		dateFilter := sm.Where(
+			psql.And(
+				psql.Quote("date").GTE(psql.Arg(queryParams.StartDate)),
+				psql.Quote("date").LTE(psql.Arg(queryParams.EndDate)),
+			),
+		)
+		q.Apply(dateFilter)
+		countQuery.Apply(dateFilter)
+	}
+
+	if queryParams.VoucherType != "" {
+		var voucherTypeFilter = sm.Where(psql.Quote("voucher_type").EQ(psql.Arg(queryParams.VoucherType)))
+		q.Apply(voucherTypeFilter)
+		countQuery.Apply(voucherTypeFilter)
 	}
 
 	query, args, err := q.Build(c)
@@ -66,7 +116,7 @@ func FetchVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	err = pgxscan.Select(context.Background(), db.GetDB(), &vouchers, query, args...)
+	err = pgxscan.Select(ctx, db.GetDB(), &vouchers, query, args...)
 
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -86,7 +136,7 @@ func FetchVoucherHandler(c *gin.Context) {
 		return
 	}
 
-	err = db.GetDB().QueryRow(context.Background(), val, args...).Scan(&count)
+	err = db.GetDB().QueryRow(ctx, val, args...).Scan(&count)
 
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -103,52 +153,9 @@ func FetchVoucherHandler(c *gin.Context) {
 
 }
 
-func FetchLedgerHandler(c *gin.Context) {
-	type Ledger struct {
-		Name   string `db:"name" json:"name"`
-		Parent string `db:"parent" json:"parent"`
-		Alias  string `db:"alias" json:"alias"`
-	}
-
-	var ledgers []Ledger
-
-	var ctx = context.Background()
-
-	q := psql.Select(
-		sm.Columns("name", "parent", "alias"),
-		sm.From("mst_ledger"),
-		sm.OrderBy("name ASC"),
-		sm.Offset(1000),
-		sm.Limit(10),
-	)
-
-	query, args, err := q.Build(c)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to build query",
-		})
-		return
-	}
-
-	err = pgxscan.Select(ctx, db.GetDB(), &ledgers, query, args...)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to retrieve ledgers",
-		})
-		return
-	}
-
-	c.JSON(200, gin.H{"ledgers": ledgers})
-
-}
-
 func FetchVoucherDetailsHandler(c *gin.Context) {
 
-	var ctx = context.Background()
+	var ctx = c.Request.Context()
 	var ledgerID = c.Param("id")
 
 	var voucher = models.TrnVoucher{}
@@ -366,6 +373,42 @@ func FetchVoucherDetailsHandler(c *gin.Context) {
 	})
 }
 
-func FetchVoucherTypeHandler(c *gin.Context){
-	
+func FetchDal(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	type Dal struct {
+		Name  string `db:"name"`
+		Alias string `db:"alias"`
+	}
+
+	var dal []Dal
+
+	q := psql.Select(
+		sm.Columns("name", "alias"),
+		sm.From("mst_dal"),
+		sm.OrderBy("name ASC"),
+	)
+
+	query, args, err := q.Build(c)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error":   err.Error(),
+			"message": "Failed to build query",
+		})
+		return
+	}
+
+	err = pgxscan.Select(ctx, db.GetDB(), &dal, query, args...)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error":   err.Error(),
+			"message": "Failed to retrieve dal",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{"dal": dal})
+
 }

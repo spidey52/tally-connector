@@ -1,0 +1,198 @@
+package handler
+
+import (
+	"bytes"
+	"context"
+	"encoding/xml"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type TallyProducts struct {
+	Name     string  `json:"name" binding:"required"`
+	Rate     float64 `json:"rate" binding:"required"`
+	Amount   float64 `json:"amount" binding:"required"`
+	Quantity int     `json:"quantity" binding:"required"`
+}
+
+type TallyDiscounts struct {
+	Type   string  `json:"type" binding:"required,oneof=SAUDA DISCOUNT, LOADING DISCOUNT"`
+	Amount float64 `json:"amount" binding:"required"`
+}
+
+type CreateSalesVoucherDto struct {
+	PartyName     string `json:"party_name" binding:"required"`
+	VoucherNumber string `json:"voucher_number" binding:"required"`
+	Date          string `json:"date" binding:"required,datetime=2006-01-02"`
+
+	Discounts []TallyDiscounts `json:"discounts"`
+	Products  []TallyProducts  `json:"products" binding:"required"`
+}
+
+var client = &http.Client{}
+var tallyEndpoint = "http://100.77.107.9:9000"
+
+func buildLedgerEntries(party_name string, products []TallyProducts, discounts []TallyDiscounts) gin.H {
+
+	var totalProducts []any
+	var totalProductValue float64
+	var totalDiscountValue float64
+
+	for _, product := range products {
+		totalProductValue += product.Amount
+
+		totalProducts = append(totalProducts, gin.H{
+			"RATE":             product.Rate,
+			"LEDGERNAME":       product.Name,
+			"AMOUNT":           product.Amount,
+			"ACTUALQTY":        product.Quantity,
+			"BILLEDQTY":        product.Quantity,
+			"ISDEEMEDPOSITIVE": "No",
+
+			"ACCOUNTINGALLOCATIONS.LIST": []any{
+				gin.H{
+					"LEDGERNAME":       "SALE",
+					"ISDEEMEDPOSITIVE": "No",
+					"AMOUNT":           product.Amount,
+				},
+			},
+		})
+	}
+
+	var totalDiscounts []any
+
+	for _, discount := range discounts {
+		totalDiscountValue += discount.Amount
+
+		totalDiscounts = append(totalDiscounts, gin.H{
+			"LEDGERNAME":       discount.Type,
+			"ISDEEMEDPOSITIVE": "No",
+			"AMOUNT":           -discount.Amount,
+		})
+	}
+
+	var ledgerEntries = []any{
+		gin.H{
+			"LEDGERNAME":       party_name,
+			"ISDEEMEDPOSITIVE": "Yes",
+			"AMOUNT":           -totalProductValue,
+		},
+	}
+
+	if len(totalDiscounts) > 0 {
+		ledgerEntries = append(ledgerEntries, totalDiscounts...)
+	}
+
+	return gin.H{
+		"ledger_entries":        ledgerEntries,
+		"all_inventory_entries": totalProducts,
+	}
+}
+
+func callTallyApi(ctx context.Context, body any) error {
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tallyEndpoint, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/xml")
+
+	// serialize body into xml
+	xmlData, err := xml.Marshal(body)
+	if err != nil {
+		return err
+	}
+	fmt.Print(string(xmlData))
+
+	req.Body = io.NopCloser(bytes.NewReader(xmlData))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Tally API response status: %s", resp.Status)
+		return fmt.Errorf("failed to call Tally API: %s", resp.Status)
+	}
+
+	var response any
+
+	if err := xml.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return err
+	}
+
+	if response == nil {
+		return fmt.Errorf("tally API returned empty response")
+	}
+
+	fmt.Printf("Tally API response: %+v\n", response)
+
+	return nil
+}
+
+func CreateSalesVoucher(c *gin.Context) {
+	// Implementation for creating a sales voucher
+	ctx := c.Request.Context()
+
+	var dto CreateSalesVoucherDto
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	val := buildLedgerEntries(dto.PartyName, dto.Products, dto.Discounts)
+
+	jsonBody := gin.H{
+		"ENVELOPE": gin.H{
+			"HEADER": gin.H{
+				"TALLYREQUEST": "Import Data",
+			},
+			"BODY": gin.H{
+				"IMPORTDATA": gin.H{
+					"REQUESTDESC": gin.H{
+						"REPORTNAME": "Vouchers",
+					},
+					"REQUESTDATA": gin.H{
+						"TALLYMESSAGE": gin.H{
+							"VOUCHER": gin.H{
+								"ACTION":                   "Create",
+								"DATE":                     dto.Date,
+								"VOUCHERNUMBER":            dto.VoucherNumber,
+								"PARTYLEDGERNAME":          dto.PartyName,
+								"VOUCHERTYPENAME":          "SALE IMPORT",
+								"PERSISTEDVIEW":            "Invoice Voucher View",
+								"ISINVOICE":                "Yes",
+								"VCHENTRYMODE":             "Item Invoice",
+								"LEDGERENTRIES.LIST":       val["ledger_entries"],
+								"ALLINVENTORYENTRIES.LIST": val["all_inventory_entries"],
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if err := callTallyApi(ctx, jsonBody); err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, gin.H{"message": "Sales voucher created successfully"})
+
+}
+
+func CreatePaymentVoucher() {
+	// Implementation for creating a payment voucher
+}
+
+func CreateJournalVoucher() {
+	// Implementation for creating a journal voucher
+}

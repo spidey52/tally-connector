@@ -2,7 +2,7 @@ package models
 
 type MstVoucherType struct {
 	Guid             string `db:"guid" json:"guid"`
-	AlterID          int64  `db:"alter_id" json:"alter_id"`
+	AlterID          int64  `db:"alterid" json:"alterid"`
 	Name             string `db:"name" json:"name"`
 	Parent           string `db:"parent" json:"parent"`
 	NumberingMethod  string `db:"numbering_method" json:"numbering_method"`
