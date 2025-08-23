@@ -1,0 +1,48 @@
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Dummy</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Receipt" ACTION="Create">
+            <DATE>20250802</DATE>
+            <VOUCHERNUMBER>2</VOUCHERNUMBER>
+            <NARRATION>satyam payment test</NARRATION>
+            <PARTYLEDGERNAME>DPAT9327</PARTYLEDGERNAME>
+            
+            <!-- Party Ledger (Credit) -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>DPAT9327</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>10000.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <!-- Bank Ledger (Debit) -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>BANK7071</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-10000.00</AMOUNT>
+              <BANKALLOCATIONS.LIST>
+                <DATE>20250802</DATE>
+                <INSTRUMENTDATE>20250802</INSTRUMENTDATE>
+                <TRANSACTIONTYPE>Cheque/DD</TRANSACTIONTYPE>
+                <PAYMENTFAVOURING>DPAT9327</PAYMENTFAVOURING>
+                <UNIQUEREFERENCENUMBER>5HXFVkeQ00svNp5y</UNIQUEREFERENCENUMBER>
+                <PAYMENTMODE>Transacted</PAYMENTMODE>
+                <AMOUNT>-10000.00</AMOUNT>
+              </BANKALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

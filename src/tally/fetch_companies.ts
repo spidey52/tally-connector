@@ -1,7 +1,7 @@
 import axios from "axios";
 import { parseStringPromise } from "xml2js";
 import myenv from "../config/env_config";
-import xml_configs from "./xml_config";
+import xml_configs from "./types";
 
 // XML request to get list of companies
 const getCompaniesXML = `

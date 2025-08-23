@@ -4,10 +4,17 @@
   "description": "",
   "dependencies": {
     "@hono/node-server": "^1.19.0",
+    "@hono/zod-openapi": "^0.10.1",
+    "@hono/zod-validator": "^0.4.3",
+    "@scalar/hono-api-reference": "^0.9.13",
     "@types/xml2js": "^0.4.14",
     "axios": "^1.11.0",
+    "dayjs": "^1.11.13",
     "hono": "^4.9.2",
-    "xml2js": "^0.6.2"
+    "hono-openapi": "^0.4.8",
+    "odbc": "^2.4.9",
+    "xml2js": "^0.6.2",
+    "zod": "^3.25.76"
   },
   "scripts": {
     "dev": "nodemon src/server.ts"

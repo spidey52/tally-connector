@@ -1,0 +1,49 @@
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Dummy</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Payment" ACTION="Create">
+            <DATE>20250802</DATE>
+            <VOUCHERTYPENAME>Payment</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>56</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>Cash</PARTYLEDGERNAME>
+            <NARRATION>satyam kumar</NARRATION>
+
+            <!-- Debit Entry -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Cash</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-1000.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <!-- Credit Entry -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>BANK7071</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>1000.00</AMOUNT>
+              <BANKALLOCATIONS.LIST>
+                <DATE>20250802</DATE>
+                <INSTRUMENTDATE>20250802</INSTRUMENTDATE>
+                <TRANSACTIONTYPE>Cheque</TRANSACTIONTYPE>
+                <PAYMENTFAVOURING>Cash</PAYMENTFAVOURING>
+                <CHEQUECROSSCOMMENT>A/c Payee</CHEQUECROSSCOMMENT>
+                <AMOUNT>1000.00</AMOUNT>
+              </BANKALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

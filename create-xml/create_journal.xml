@@ -1,0 +1,38 @@
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Dummy</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Journal" ACTION="Create">
+            <DATE>20250802</DATE>
+            <NARRATION>satyam testing</NARRATION>
+            <VOUCHERTYPENAME>Journal</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>2</VOUCHERNUMBER>
+            
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>DPAT9327</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-100.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>ROUNDOFF</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>100.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+            
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>
