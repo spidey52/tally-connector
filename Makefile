@@ -1,16 +1,25 @@
+PORT ?= 8004
 BIN_DIR=bin
 
-.PHONY: all build clean
+.PHONY: all build clean dev run
 
 all: build
 
-# Build app1
-build-app1:
+# Build API for production
+build-api:
 	@mkdir -p $(BIN_DIR)
-	go build -o $(BIN_DIR)/app1 cmd/api/main.go
+	go build -o $(BIN_DIR)/api cmd/api/main.go 
 
-# Build all
-build: build-app1 build-app2
+# Build all (if you have multiple apps later)
+build: build-api
+
+# Run development with live reload
+dev:
+	cd cmd/api && air
+
+# Run production binary
+run: build
+	$(BIN_DIR)/app1  --port=$(PORT)
 
 # Clean all binaries
 clean:
