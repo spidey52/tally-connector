@@ -41,6 +41,7 @@ require (
 )
 
 require (
+	github.com/clbanning/mxj/v2 v2.7.0
 	github.com/georgysavva/scany/v2 v2.1.4
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0

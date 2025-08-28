@@ -1,0 +1,22 @@
+{
+	"database": {
+		"technology": "postgres",
+		"server": "100.105.141.99",
+		"port": 5432,
+		"ssl": false,
+		"schema": "tally_incremental_db",
+		"username": "satyam",
+		"password": "satyam52",
+		"loadmethod": "insert"
+	},
+	"tally": {
+		"definition": "tally-export-config.yaml",
+		"server": "100.77.107.9",
+		"port": 9000,
+		"fromdate": "2025-08-01",
+		"todate": "2026-03-31",
+		"sync": "full",
+		"frequency": 5,
+		"company": "ABC-24 -DEC"
+	}
+}

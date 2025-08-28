@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"tally-connector/cmd/api/middlewares"
 	"tally-connector/cmd/db"
@@ -73,7 +72,6 @@ func getTotalBalance(ctx context.Context, ledger_ids []string, start_date, end_d
     ORDER BY
         opening_balance DESC;`, start_date, end_date, ledger_ids)
 
-	fmt.Println("Query: ", stmt)
 	var totalBalance = []TotalBalance{}
 
 	err := pgxscan.Select(ctx, db.GetDB(), &totalBalance, stmt.String(), start_date, end_date, ledger_ids)

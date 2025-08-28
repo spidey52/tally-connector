@@ -1,4 +1,4 @@
-PORT ?= 8004
+PORT ?= 8084
 BIN_DIR=bin
 
 APP_NAME=api
@@ -17,7 +17,10 @@ build: build-api
 
 # Run development with live reload
 dev:
-	cd cmd/api && air
+	cd cmd/api && air -c ../../.air.toml
+
+loader-dev:
+	cd cmd/loader && air -c ../../.air.toml
 
 # Run production binary
 run: build
@@ -26,4 +29,3 @@ run: build
 # Clean all binaries
 clean:
 	rm -rf $(BIN_DIR)
-	find . -type d -name "tmp" -exec rm -rf {} +

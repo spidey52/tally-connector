@@ -29,7 +29,7 @@ func ConnectDB(connStr string) {
 	}
 
 	// Test connection
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := p.Ping(ctx); err != nil {
 		log.Fatal("Unable to ping database: ", err)

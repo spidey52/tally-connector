@@ -178,11 +178,3 @@ func CreateSalesVoucher(c *gin.Context) {
 
 	c.JSON(201, gin.H{"message": "Sales voucher created successfully"})
 }
-
-func CreatePaymentVoucher() {
-
-}
-
-func CreateJournalVoucher() {
-	// TODO: Implement like sales voucher
-}

@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"log"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -27,6 +29,19 @@ func InsertPaginationParams(c *gin.Context) {
 	}
 
 	c.Request.URL.RawQuery = q.Encode() // apply changes
+
+	var paginationParams PaginationParams
+	err := c.ShouldBindQuery(&paginationParams)
+	if err != nil {
+		log.Println("Error in binding query ", err)
+		c.JSON(400, gin.H{
+			"error":   err.Error(),
+			"message": "Invalid query parameters",
+		})
+		return
+	}
+
+	c.Set("pagination_params", paginationParams)
 
 	c.Next()
 }

@@ -18,5 +18,3 @@ type TrnVoucher struct {
 	IsInventoryVoucher  *int       `json:"is_inventory_voucher" db:"is_inventory_voucher"`
 	IsOrderVoucher      *int       `json:"is_order_voucher" db:"is_order_voucher"`
 }
-
-

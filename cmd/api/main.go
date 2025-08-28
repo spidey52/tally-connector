@@ -12,7 +12,9 @@ import (
 )
 
 func main() {
-	db.ConnectDB("postgres://satyam:satyam52@localhost:5432/tally_db")
+	db.ConnectDB("postgres://satyam:satyam52@100.66.94.61:5432/tally_db")
+	// db.ConnectDB("postgres://satyam:satyam52@localhost:5432/tally_db")
+	// db.ConnectDB("postgres://myuser:mypassword@100.126.105.7:5432/mydb")
 
 	r := gin.Default()
 
@@ -32,6 +34,10 @@ func main() {
 	r.GET("/fetch-ledgers-autocomplete", handler.FetchLedgerAutoComplete)
 
 	r.GET("/fetch-vouchers", handler.FetchVoucherHandler)
+	r.GET("/fetch-daybook", handler.FetchDaybook)
+	r.GET("/fetch-dal", handler.FetchDal)
+	r.GET("/fetch-products", handler.FetchStockItem)
+	r.GET("/fetch-stock-items", handler.FetchStockItem)
 	r.GET("/fetch-vouchers/:id", handler.FetchVoucherDetailsHandler)
 
 	r.GET("/fetch-voucher-type", handler.FetchVoucherTypeHandler)

@@ -162,11 +162,7 @@ func FetchVoucherDetailsHandler(c *gin.Context) {
 	var inventory = []models.TrnInventory{}
 	var inventory_accounting = []models.TrnInventoryAccounting{}
 	var accounting = []models.TrnAccounting{}
-	var bills = []models.TrnBill{}
-	var batch = []models.TrnBatch{}
-	var bank = []models.TrnBank{}
-
-	// Inventory Accounting
+	// Transaction Inventory
 	q := psql.Select(
 		sm.Columns("item", "quantity", "rate", "amount", "additional_amount", "discount_amount"),
 		sm.From("trn_inventory"),
@@ -193,7 +189,7 @@ func FetchVoucherDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	// again overwrite the query
+	// trn_inventory_accounting
 	q = psql.Select(
 		sm.Columns("guid", "ledger", "amount", "additional_allocation_type"),
 		sm.From("trn_inventory_accounting"),
@@ -246,6 +242,15 @@ func FetchVoucherDetailsHandler(c *gin.Context) {
 	)
 
 	if err != nil {
+
+		if pgxscan.NotFound(err) {
+			c.JSON(404, gin.H{
+				"error":   "Voucher Not Found",
+				"message": "Voucher not found",
+			})
+			return
+		}
+
 		c.JSON(500, gin.H{
 			"error":   err.Error(),
 			"message": "Failed to retrieve voucher",
@@ -280,135 +285,13 @@ func FetchVoucherDetailsHandler(c *gin.Context) {
 		return
 	}
 
-	// tans bills
-
-	q = psql.Select(
-		sm.Columns("guid", "ledger", "name", "amount", "billtype", "bill_credit_period"),
-		sm.From("trn_bill"),
-		sm.Where(psql.Quote("guid").EQ(psql.Arg(ledgerID))),
-	)
-
-	query, args, err = q.Build(c)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to build query",
-		})
-		return
-	}
-
-	err = pgxscan.Select(ctx, db.GetDB(), &bills, query, args...)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to retrieve bills",
-		})
-		return
-	}
-
-	// tran batch
-	q = psql.Select(
-		sm.Columns("guid", "item", "name", "quantity", "amount", "godown"),
-		sm.From("trn_batch"),
-		sm.Where(psql.Quote("guid").EQ(psql.Arg(ledgerID))),
-	)
-
-	query, args, err = q.Build(c)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to build query",
-		})
-		return
-	}
-
-	err = pgxscan.Select(ctx, db.GetDB(), &batch, query, args...)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to retrieve batch",
-		})
-		return
-	}
-
-	// tran bank
-	q = psql.Select(
-		sm.Columns("guid", "ledger", "transaction_type", "instrument_date", "instrument_number", "bank_name", "amount", "bankers_date"),
-		sm.From("trn_bank"),
-		sm.Where(psql.Quote("guid").EQ(psql.Arg(ledgerID))),
-	)
-
-	query, args, err = q.Build(c)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to build query",
-		})
-		return
-	}
-
-	err = pgxscan.Select(ctx, db.GetDB(), &bank, query, args...)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to retrieve bank",
-		})
-		return
-	}
-
 	c.JSON(200, gin.H{
 		"voucher":              voucher,
 		"inventory":            inventory,
 		"inventory_accounting": inventory_accounting,
 		"accounting":           accounting,
-		"bills":                bills,
-		"batch":                batch,
-		"bank":                 bank,
+		// "bills":                bills,
+		// "batch":                batch,
+		// "bank":                 bank,
 	})
-}
-
-func FetchDal(c *gin.Context) {
-	ctx := c.Request.Context()
-
-	type Dal struct {
-		Name  string `db:"name"`
-		Alias string `db:"alias"`
-	}
-
-	var dal []Dal
-
-	q := psql.Select(
-		sm.Columns("name", "alias"),
-		sm.From("mst_dal"),
-		sm.OrderBy("name ASC"),
-	)
-
-	query, args, err := q.Build(c)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to build query",
-		})
-		return
-	}
-
-	err = pgxscan.Select(ctx, db.GetDB(), &dal, query, args...)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   err.Error(),
-			"message": "Failed to retrieve dal",
-		})
-		return
-	}
-
-	c.JSON(200, gin.H{"dal": dal})
-
 }
