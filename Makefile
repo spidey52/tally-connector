@@ -29,3 +29,4 @@ run: build
 # Clean all binaries
 clean:
 	rm -rf $(BIN_DIR)
+	cd cmd/loader/reqlog && rm -r request/*  && rm -r response/*

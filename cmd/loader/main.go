@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"slices"
 	"tally-connector/cmd/db"
 	"tally-connector/cmd/helper"
 	"tally-connector/cmd/loader/config"
@@ -57,7 +58,9 @@ var client = &http.Client{}
 
 // var tallyEndpoint = "http://100.77.107.9:9000"
 // var tallyEndpoint = "http://172.16.0.47:9000"
-var tallyEndpoint = "http://100.65.128.68:9000"
+
+// 100.65.128.68
+var tallyEndpoint = "http://100.110.172.109:9000"
 
 func callTallyApi(ctx context.Context, xmlData []byte) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tallyEndpoint, bytes.NewReader(xmlData))
@@ -65,7 +68,7 @@ func callTallyApi(ctx context.Context, xmlData []byte) (string, error) {
 		return "", err
 	}
 	curr_time := time.Now().Format("20060102150405")
-	os.WriteFile(fmt.Sprintf("request_%s.xml", curr_time), xmlData, 0644)
+	os.WriteFile(fmt.Sprintf("reqlog/request/request_%s.xml", curr_time), xmlData, 0644)
 
 	req.Header.Set("Content-Type", "application/xml")
 
@@ -88,8 +91,8 @@ func callTallyApi(ctx context.Context, xmlData []byte) (string, error) {
 		return "", err
 	}
 
-	os.WriteFile(fmt.Sprintf("response_%s.xml", curr_time), []byte(string(body)), 0644)
 	str := helper.CleanString(string(body))
+	os.WriteFile(fmt.Sprintf("reqlog/response/response_%s.xml", curr_time), []byte(string(body)), 0644)
 
 	return str, nil
 }
@@ -132,8 +135,6 @@ func importData(ctx context.Context, import_table models.SyncTable) (string, err
 		ToDate:   cfg.Tally.ToDate,
 	})
 
-	start := time.Now()
-
 	// TODO: use the max_wait from the table config
 	reqCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
@@ -146,101 +147,66 @@ func importData(ctx context.Context, import_table models.SyncTable) (string, err
 		return "", err
 	}
 
-	log.Println("Tally API call duration:", time.Since(start).Seconds(), "seconds", "for", table.Name)
-	fmt.Println("Response length:", len(val), "for", table.Name)
+	err = ProcessXMLData(ctx, table.Name, val, table.Fields)
+
+	if err != nil {
+		return "", err
+	}
+
 	return val, nil
 }
 
+func ImportAll(filters ...string) {
+	tables, err := config.GetMergedTables()
+
+	type Result struct {
+		Error    string  `json:"error,omitempty"`
+		Duration float64 `json:"duration,omitempty"`
+		Table    string  `json:"table,omitempty"`
+	}
+	var results = []Result{}
+
+	if err != nil {
+		log.Printf("Error loading table config: %v", err)
+		return
+	}
+
+	for _, table := range tables {
+		if len(filters) > 0 && !slices.Contains(filters, table.Name) {
+			continue
+		}
+
+		start := time.Now()
+		_, err = importData(context.Background(), models.SyncTable{
+			Name: table.Name,
+		})
+		duration := time.Since(start)
+
+		var res = Result{
+			Error:    "",
+			Duration: duration.Seconds(),
+			Table:    table.Name,
+		}
+
+		if err != nil {
+			res.Error = err.Error()
+		}
+		results = append(results, res)
+	}
+	WriteToFile("import_summary.json", results)
+
+}
+
 func main() {
-	// db.ConnectDB("postgres://satyam:satyam52@localhost:5432/tally_incremental_db")
-	db.ConnectDB("postgres://satyam:satyam52@100.66.94.61:5432/tally_db")
+	db.ConnectDB("postgres://satyam:satyam52@localhost:5432/tally_incremental_db")
+	// db.ConnectDB("postgres://satyam:satyam52@100.66.94.61:5432/tally_db")
 	gin.SetMode(gin.ReleaseMode)
 	server := gin.Default()
+	ImportAll()
 
 	server.GET("/health", func(c *gin.Context) {
-		ctx := c.Request.Context()
-		table_name := c.Query("table_name")
-
-		// q := psql.Select(
-		// 	sm.Columns("table_name", "group_name", "max_wait", "sync_interval"),
-		// 	sm.From("tbl_sync_tables"),
-		// 	sm.Where(psql.Quote("table_name").EQ(psql.Arg(table_name))),
-		// 	sm.Limit(1),
-		// )
-
-		// query, args, err := q.Build(ctx)
-
-		// if err != nil {
-		// 	c.JSON(500, gin.H{"error": "Failed to build query", "details": err.Error()})
-		// 	return
-		// }
-
-		var tables = []models.SyncTable{}
-
-		// err = pgxscan.Select(ctx, db.GetDB(), &tables, query, args...)
-
-		// if err != nil {
-		// 	c.JSON(500, gin.H{"error": "Failed to execute query", "details": err.Error()})
-		// 	return
-		// }
-
-		// if len(tables) == 0 {
-		// 	c.JSON(400, gin.H{"error": "No tables found"})
-		// 	return
-		// }
-
-		loadTables, err := config.LoadTablesConfig()
-
-		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to load table config", "details": err.Error()})
-			return
-		}
-
-		for _, table := range loadTables.Master {
-			if table.Name == table_name {
-				tables = append(tables, models.SyncTable{
-					Name: table.Name,
-				})
-			}
-
-		}
-
-		for _, table := range loadTables.Transaction {
-			if table.Name == table_name {
-				tables = append(tables, models.SyncTable{
-					Name: table.Name,
-				})
-
-				fmt.Println("Found transaction table:", table.Fetch)
-
-			}
-		}
-
-		result, err := importData(ctx, tables[0])
-
-		if err != nil {
-			c.JSON(500, gin.H{"error": "Failed to import data", "details": err.Error()})
-			return
-		}
-
-		if len(result) > 0 {
-			tableName := tables[0].Name
-
-			tableConfig := getTableConfig(tableName)
-
-			if tableConfig == nil {
-				c.JSON(404, gin.H{"error": "Table configuration not found"})
-				return
-			}
-
-			ProcessXMLData(c, tableName, result, tableConfig.Fields)
-
-			return
-		}
-
 		c.JSON(200, gin.H{
-			"data":  result,
-			"count": len(result),
+			"status": "import completed",
 		})
 	})
 

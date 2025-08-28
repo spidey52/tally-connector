@@ -1,8 +1,9 @@
 package config
 
 import (
-	"encoding/json"
 	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -33,14 +34,14 @@ type TallyConfig struct {
 }
 
 func LoadConfig() (*Config, error) {
-	file, err := os.Open("config.json")
+	file, err := os.Open("config.yaml")
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
 	var config Config
-	if err := json.NewDecoder(file).Decode(&config); err != nil {
+	if err := yaml.NewDecoder(file).Decode(&config); err != nil {
 		return nil, err
 	}
 

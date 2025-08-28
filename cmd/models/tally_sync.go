@@ -16,6 +16,7 @@ type SyncLog struct {
 	EndTime   time.Time `json:"end_time" db:"end_time"`
 	Duration  int       `json:"duration" db:"duration"` // in seconds
 	Status    string    `json:"status" db:"status"`
+	Message   string    `json:"message" db:"message"`
 }
 
 /*

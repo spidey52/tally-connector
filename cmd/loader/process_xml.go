@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"strconv"
 	"tally-connector/cmd/db"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/clbanning/mxj/v2"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -51,7 +51,7 @@ func InsertIntoDB(ctx context.Context, table_name string, cols []string, data []
 		return fmt.Errorf("transaction commit failed: %w", err)
 	}
 
-	fmt.Printf("Successfully truncated all rows and inserted %d new rows into %s.\n", len(data), table_name)
+	log.Printf("Successfully truncated all rows and inserted %d new rows into %s.\n", len(data), table_name)
 	return nil
 }
 
@@ -81,22 +81,41 @@ func (s *mapSource) Err() error {
 }
 
 // ProcessXMLData extracts and transforms XML data into a JSON array of objects.
-func ProcessXMLData(c *gin.Context, table string, result string, fields []config.Field) {
+func ProcessXMLData(c context.Context, table string, result string, fields []config.Field) error {
 	m, err := mxj.NewMapXml([]byte(result))
 	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to parse XML", "details": err.Error()})
-		return
+		// c.JSON(500, gin.H{"error": "Failed to parse XML", "details": err.Error()})
+		// message := fmt.Sprintf("failed to parse XML: %s", err.Error())
+		return fmt.Errorf("failed to parse XML: %s", err.Error())
+	}
+
+	// check if envelope data is emtpy
+	envelopeVal := m["ENVELOPE"]
+
+	if envelopeVal == "" {
+		// log.Printf("xml structure 'ENVELOPE' key is empty for %s\n", table)
+		return nil
 	}
 
 	realData, ok := m["ENVELOPE"].(map[string]any)
+
+	if realData == nil {
+		return fmt.Errorf("xml structure missing 'ENVELOPE' key")
+	}
+
 	if !ok {
-		c.JSON(500, gin.H{"error": "XML structure missing 'ENVELOPE' key"})
-		return
+		return fmt.Errorf("xml structure missing 'ENVELOPE' key")
 	}
 
 	// This part is the core of the transformation.
 	// We'll use a direct approach rather than fragile key sorting.
 	keys := make([]string, 0, len(realData))
+	delete(realData, "BLANK")
+
+	if len(realData) == 0 {
+		return fmt.Errorf("no valid data found")
+	}
+
 	for key := range realData {
 		keys = append(keys, key)
 	}
@@ -104,16 +123,22 @@ func ProcessXMLData(c *gin.Context, table string, result string, fields []config
 
 	// Check if there is at least one key to iterate over
 	if len(keys) == 0 {
-		c.JSON(200, gin.H{"data": []map[string]any{}})
-		return
+		return fmt.Errorf("no valid data found")
+	}
+
+	// if type of realData[keys][0] is not slice then make it slice
+	for _, key := range keys {
+		if _, ok := realData[key].([]any); !ok {
+			realData[key] = []any{realData[key]}
+		}
 	}
 
 	// Use the length of the first sorted key's data array to control the loop
 	firstKeyData, ok := realData[keys[0]].([]any)
 	if !ok {
-		c.JSON(500, gin.H{"error": "Data for first key is not a slice"})
-		return
+		return fmt.Errorf("data for first key is not a slice")
 	}
+
 	dataLength := len(firstKeyData)
 
 	finalResult := make([]map[string]any, 0, dataLength)
@@ -123,32 +148,22 @@ func ProcessXMLData(c *gin.Context, table string, result string, fields []config
 		cols = append(cols, field.Name)
 	}
 
-	// delete blank key from realData and checkif len(realData = 0) return 500
-
-	delete(realData, "BLANK")
-
-	if len(realData) == 0 {
-		c.JSON(500, gin.H{"error": "no valid data found"})
-		return
-	}
-
 	if len(realData) != len(cols) {
-		c.JSON(500, gin.H{"error": "data length mismatch",
-			"expected": len(cols),
-			"actual":   len(realData),
-		})
-		return
+		return fmt.Errorf("data length mismatch: expected %d, actual %d", len(cols), len(realData))
 	}
 
 	// Iterate based on the number of records
-	for i := range dataLength {
+	for i := range firstKeyData {
 		record := make(map[string]any)
 		// Populate the record by iterating through all keys
 		for idx, key := range keys {
 			field := fields[idx]
 			assignKey := field.Name
 
+			// fmt.Println("Processing key:", key)
+
 			keyData, ok := realData[key].([]any)
+			// fmt.Println("Processing keyData:", keyData)
 			if !ok || i >= len(keyData) {
 				// Handle cases where a key's data is not a slice or is too short
 				record[key] = nil // Or some default value
@@ -165,20 +180,15 @@ func ProcessXMLData(c *gin.Context, table string, result string, fields []config
 		finalResult = append(finalResult, record)
 	}
 
-	ctx := c.Request.Context()
+	ctx := c
 
 	err = InsertIntoDB(ctx, table, cols, finalResult)
 	if err != nil {
-		c.JSON(500, gin.H{"error": "Failed to insert data into database", "details": err.Error()})
-		return
+		return fmt.Errorf("failed to insert data into database: %s", err.Error())
 	}
 
-	c.JSON(200, gin.H{
-		"data":       finalResult[0],
-		"count":      len(finalResult),
-		"cols":       cols,
-		"datalength": len(firstKeyData),
-	})
+	return nil
+
 }
 
 func ConvertDataType(value string, targetType string) (any, error) {

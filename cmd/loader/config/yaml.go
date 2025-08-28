@@ -40,3 +40,16 @@ func LoadTablesConfig() (*TablesConfig, error) {
 
 	return &tablesConfig, nil
 }
+
+func GetMergedTables() ([]Table, error) {
+	tablesConfig, err := LoadTablesConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	var mergedTables []Table
+	mergedTables = append(mergedTables, tablesConfig.Master...)
+	mergedTables = append(mergedTables, tablesConfig.Transaction...)
+
+	return mergedTables, nil
+}

@@ -644,9 +644,9 @@ transaction:
         - name: amount_forex
           field: if $$IsEmpty:$$ForexValue:$Amount then 0 else $$StringFindAndReplace:(if $$IsDebit:$Amount then -$$ForexValue:$Amount else $$ForexValue:$Amount):"(-)":"-"
           type: amount
-        # - name: currency
-        #   field: $$Currency:$Amount
-        #   type: text
+        - name: currency
+          field: $$Currency:$Amount
+          type: text
     - name: trn_inventory
       collection: Voucher.AllInventoryEntries
       nature: Derived
