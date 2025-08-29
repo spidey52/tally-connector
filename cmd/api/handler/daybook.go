@@ -28,12 +28,24 @@ func FetchDaybook(c *gin.Context) {
 	var ctx = c.Request.Context()
 	var paginationParams = c.MustGet("pagination_params").(middlewares.PaginationParams)
 
-	if paginationParams.StartDate == "" {
-		c.JSON(400, gin.H{
-			"error":   "Invalid start date",
-			"message": "Start date is required",
-		})
-		return
+	if paginationParams.StartDate == "" || paginationParams.EndDate == "" {
+
+		// fetch last date from voucher
+
+		var lastDate time.Time
+		err := db.GetDB().QueryRow(ctx, "SELECT MAX(date) FROM trn_voucher").Scan(&lastDate)
+
+		if err != nil {
+			c.JSON(500, gin.H{
+				"error":   err.Error(),
+				"message": "Failed to retrieve last voucher date",
+			})
+			return
+		}
+
+		paginationParams.StartDate = lastDate.Format("2006-01-02")
+		paginationParams.EndDate = lastDate.Format("2006-01-02")
+
 	}
 
 	q := psql.Select(
