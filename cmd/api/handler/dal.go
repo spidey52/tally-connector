@@ -144,7 +144,9 @@ func FetchDal(c *gin.Context) {
 
 		absAmount := math.Abs(dal[i].Amount)
 
-		if isPositive {
+		// categorize the amount into debit and credit
+		// for daybook it should be opposite.
+		if !isPositive {
 			dal[i].CreditAmount = absAmount
 		} else {
 			dal[i].DebitAmount = absAmount
