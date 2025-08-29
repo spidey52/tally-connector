@@ -8,7 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"tally-connector/cmd/tallyxml"
+	"tally-connector/internal/tallyxml"
 
 	"github.com/gin-gonic/gin"
 )

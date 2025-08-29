@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"tally-connector/cmd/api/handler"
 	"tally-connector/cmd/api/middlewares"
-	"tally-connector/cmd/db"
+	"tally-connector/internal/db"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

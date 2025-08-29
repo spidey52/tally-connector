@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 	"tally-connector/cmd/api/middlewares"
-	"tally-connector/cmd/db"
-	"tally-connector/cmd/models"
+	"tally-connector/internal/db"
+	"tally-connector/internal/models"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/gin-gonic/gin"

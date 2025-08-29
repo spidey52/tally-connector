@@ -3,7 +3,7 @@ package handler
 import (
 	"math"
 	"tally-connector/cmd/api/middlewares"
-	"tally-connector/cmd/db"
+	"tally-connector/internal/db"
 	"time"
 
 	"github.com/georgysavva/scany/v2/pgxscan"

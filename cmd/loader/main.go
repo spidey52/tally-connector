@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"os"
 	"slices"
-	"tally-connector/cmd/db"
-	"tally-connector/cmd/helper"
 	"tally-connector/cmd/loader/config"
-	"tally-connector/cmd/models"
+	"tally-connector/internal/db"
+	"tally-connector/internal/helper"
+	"tally-connector/internal/models"
 	"time"
 
 	"github.com/gin-gonic/gin"

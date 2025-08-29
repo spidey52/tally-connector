@@ -6,8 +6,8 @@ import (
 	"log"
 	"sort"
 	"strconv"
-	"tally-connector/cmd/db"
 	"tally-connector/cmd/loader/config"
+	"tally-connector/internal/db"
 	"time"
 
 	"github.com/clbanning/mxj/v2"
