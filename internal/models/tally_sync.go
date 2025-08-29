@@ -1,6 +1,11 @@
 package models
 
-import "time"
+import (
+	"context"
+	"log"
+	"tally-connector/internal/db"
+	"time"
+)
 
 type SyncTable struct {
 	Name         string `json:"name" db:"table_name"`
@@ -17,6 +22,44 @@ type SyncLog struct {
 	Duration  int       `json:"duration" db:"duration"` // in seconds
 	Status    string    `json:"status" db:"status"`
 	Message   string    `json:"message" db:"message"`
+}
+
+func CreateSyncTables() {
+
+	val, err := db.GetDB().Exec(context.Background(), `
+    create table if not exists tbl_sync_tables (
+      table_name varchar(255) not null,
+      group_name varchar(255) not null,
+      max_wait integer not null,
+      sync_interval integer not null
+    )`)
+
+	if err != nil {
+		// Handle error
+		log.Println("Error creating tbl_sync_tables:", err)
+		return
+	}
+
+	log.Println("Result of creating tbl_sync_tables:", val)
+
+	val, err = db.GetDB().Exec(context.Background(), `
+    create table if not exists tbl_sync_logs (
+      table_name varchar(255) not null,
+      group_name varchar(255) not null,
+      start_time timestamp not null,
+      end_time timestamp not null,
+      duration integer not null,
+      status varchar(50) not null
+    );`)
+
+	if err != nil {
+		// Handle error
+		log.Println("Error creating tbl_sync_logs:", err)
+		return
+	}
+
+	log.Println("Result of creating tbl_sync_logs:", val)
+
 }
 
 /*

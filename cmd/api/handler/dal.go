@@ -32,6 +32,19 @@ func FetchDal(c *gin.Context) {
 
 	queryParams := c.MustGet("pagination_params").(middlewares.PaginationParams)
 
+	type FetchDalDto struct {
+		SkipVouchers []string `json:"skip_vouchers"`
+	}
+
+	var dto FetchDalDto
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(400, gin.H{
+			"error":   "Bad Request",
+			"message": err.Error(),
+		})
+		return
+	}
+
 	if ledgerID == "" {
 		c.JSON(400, gin.H{
 			"error":   "Bad Request",
@@ -137,7 +150,20 @@ func FetchDal(c *gin.Context) {
 		return
 	}
 
-	var balance, _ = getTotalBalance(ctx, []string{ledgerID}, queryParams.StartDate, queryParams.EndDate)
+	balance, err := getTotalBalance(ctx, TotalBalanceParams{
+		StartDate:    queryParams.StartDate,
+		EndDate:      queryParams.EndDate,
+		LedgerIDs:    []string{ledgerID},
+		SkipVouchers: dto.SkipVouchers,
+	})
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error":   "Internal Server Error",
+			"message": err.Error(),
+		})
+		return
+	}
 
 	for i := range dal {
 		isPositive := dal[i].Amount >= 0

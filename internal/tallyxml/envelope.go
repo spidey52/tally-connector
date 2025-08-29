@@ -49,21 +49,22 @@ type LedgerEntry struct {
 
 // This is where we allow flexibility
 type TallyMessage struct {
-	Voucher *SaleVoucher `xml:"VOUCHER,omitempty"`
+	Voucher *[]SaleVoucher `xml:"VOUCHER,omitempty"`
 	// Ledger    *Ledger    `xml:"LEDGER,omitempty"`
 	// StockItem *StockItem `xml:"STOCKITEM,omitempty"`
 	// add more types later if needed
 }
 
 type TallyResponse struct {
-	Created    int `xml:"CREATED"`
-	Altered    int `xml:"ALTERED"`
-	Deleted    int `xml:"DELETED"`
-	LastVchId  int `xml:"LASTVCHID"`
-	LastMid    int `xml:"LASTMID"`
-	Combined   int `xml:"COMBINED"`
-	Ignored    int `xml:"IGNORED"`
-	Errors     int `xml:"ERRORS"`
-	Cancelled  int `xml:"CANCELLED"`
-	Exceptions int `xml:"EXCEPTIONS"`
+	LineError  string `xml:"LINEERROR"`
+	Created    int    `xml:"CREATED"`
+	Altered    int    `xml:"ALTERED"`
+	Deleted    int    `xml:"DELETED"`
+	LastVchId  int    `xml:"LASTVCHID"`
+	LastMid    int    `xml:"LASTMID"`
+	Combined   int    `xml:"COMBINED"`
+	Ignored    int    `xml:"IGNORED"`
+	Errors     int    `xml:"ERRORS"`
+	Cancelled  int    `xml:"CANCELLED"`
+	Exceptions int    `xml:"EXCEPTIONS"`
 }

@@ -17,7 +17,25 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
+
+type LoaderEnv struct {
+	PostgresURL   string `env:"POSTGRES_URL"`
+	TallyEndpoint string `env:"TALLY_ENDPOINT"`
+}
+
+var env LoaderEnv
+
+func init() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	env.PostgresURL = os.Getenv("POSTGRES_URL")
+	env.TallyEndpoint = os.Getenv("TALLY_ENDPOINT")
+}
 
 // var table = "trn_employee"
 
@@ -56,11 +74,7 @@ func parseDate(str string) time.Time {
 
 var client = &http.Client{}
 
-// var tallyEndpoint = "http://100.77.107.9:9000"
-// var tallyEndpoint = "http://172.16.0.47:9000"
-
-// 100.65.128.68
-var tallyEndpoint = "http://100.110.172.109:9000"
+var tallyEndpoint = env.TallyEndpoint
 
 func callTallyApi(ctx context.Context, xmlData []byte) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tallyEndpoint, bytes.NewReader(xmlData))
@@ -198,13 +212,14 @@ func ImportAll(filters ...string) {
 }
 
 func main() {
-	db.ConnectDB("postgres://satyam:satyam52@localhost:5432/tally_incremental_db")
-	// db.ConnectDB("postgres://satyam:satyam52@100.66.94.61:5432/tally_db")
+	db.ConnectDB(env.PostgresURL)
+	models.CreateSyncTables()
+
 	gin.SetMode(gin.ReleaseMode)
 	server := gin.Default()
-	ImportAll()
 
-	server.GET("/health", func(c *gin.Context) {
+	server.POST("/sync", func(c *gin.Context) {
+		ImportAll()
 		c.JSON(200, gin.H{
 			"status": "import completed",
 		})

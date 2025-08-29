@@ -3,18 +3,37 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
 	"tally-connector/cmd/api/handler"
 	"tally-connector/cmd/api/middlewares"
 	"tally-connector/internal/db"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
+type LoaderEnv struct {
+	PostgresURL   string `env:"POSTGRES_URL"`
+	TallyEndpoint string `env:"TALLY_ENDPOINT"`
+}
+
+var env LoaderEnv
+
+func init() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	env.PostgresURL = os.Getenv("POSTGRES_URL")
+	env.TallyEndpoint = os.Getenv("TALLY_ENDPOINT")
+}
+
 func main() {
-	db.ConnectDB("postgres://satyam:satyam52@100.66.94.61:5432/tally_db")
-	// db.ConnectDB("postgres://satyam:satyam52@localhost:5432/tally_db")
-	// db.ConnectDB("postgres://myuser:mypassword@100.126.105.7:5432/mydb")
+	db.ConnectDB(env.PostgresURL)
 
 	r := gin.Default()
 
@@ -26,6 +45,8 @@ func main() {
 		AllowHeaders:     []string{"*"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
+
+		MaxAge: 12 * time.Hour,
 	}))
 
 	r.Use(middlewares.InsertPaginationParams)
@@ -35,7 +56,8 @@ func main() {
 
 	r.GET("/fetch-vouchers", handler.FetchVoucherHandler)
 	r.GET("/fetch-daybook", handler.FetchDaybook)
-	r.GET("/fetch-dal", handler.FetchDal)
+	// r.GET("/fetch-dal", handler.FetchDal)
+	r.POST("/fetch-dal", handler.FetchDal)
 	r.GET("/fetch-products", handler.FetchStockItem)
 	r.GET("/fetch-stock-items", handler.FetchStockItem)
 	r.GET("/fetch-vouchers/:id", handler.FetchVoucherDetailsHandler)
@@ -43,6 +65,9 @@ func main() {
 	r.GET("/fetch-voucher-type", handler.FetchVoucherTypeHandler)
 
 	r.POST("/sales-voucher", handler.CreateSalesVoucher)
+
+	syncTableGroup := r.Group("/sync-tables")
+	syncTableGroup.GET("", handler.GetSyncTables)
 
 	port := flag.Int("port", 8080, "Port to run the server on")
 	flag.Parse()

@@ -13,12 +13,13 @@ tally:
   # server: 100.77.107.9 ### winvm
   # company: ABC-24 -DEC
 
-  server: 100.77.107.9 ## winvm
-  company: ABC-24 -DEC
+  # server: 100.77.107.9 ## winvm
+  # company: ABC-24 -DEC
+
   # company: ABC-24 -DEC - (from 1-Apr-2025)
 
-  # server: 172.16.0.47
-  # company: Dummy
+  server: 172.16.0.47
+  company: Dummy
 
   port: 9000
   fromdate: '2025-08-01'

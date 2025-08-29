@@ -4,3 +4,4 @@ hello.json
 bin
 tmp*
 reqlog
+env.yaml

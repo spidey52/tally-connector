@@ -9,6 +9,7 @@ import (
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/gin-gonic/gin"
+	"github.com/lib/pq"
 	"github.com/stephenafamo/bob/dialect/psql"
 	"github.com/stephenafamo/bob/dialect/psql/sm"
 )
@@ -36,7 +37,11 @@ func getOpeningBalance(ctx context.Context, ledger_ids []string) (map[string]flo
 	return openingBalances, nil
 }
 func GetTotal(id string) {
-	result, err := getTotalBalance(context.Background(), []string{id}, "2025-01-01", "2025-12-31")
+	result, err := getTotalBalance(context.Background(), TotalBalanceParams{
+		StartDate: "2025-01-01",
+		EndDate:   "2025-12-31",
+		LedgerIDs: []string{id},
+	})
 	if err != nil {
 		log.Println("Error fetching total balance:", err)
 		return
@@ -44,7 +49,18 @@ func GetTotal(id string) {
 	log.Println("Total balance for", id, ":", result)
 }
 
-func getTotalBalance(ctx context.Context, ledger_ids []string, start_date, end_date string) (map[string]TotalBalance, error) {
+type TotalBalanceParams struct {
+	StartDate    string   `json:"start_date"`
+	EndDate      string   `json:"end_date"`
+	LedgerIDs    []string `json:"ledger_ids"`
+	SkipVouchers []string `json:"skip_vouchers"`
+}
+
+func getTotalBalance(ctx context.Context, params TotalBalanceParams) (map[string]TotalBalance, error) {
+
+	var start_date = params.StartDate
+	var end_date = params.EndDate
+	var ledger_ids = params.LedgerIDs
 
 	var totalBalances = make(map[string]TotalBalance)
 
@@ -52,37 +68,43 @@ func getTotalBalance(ctx context.Context, ledger_ids []string, start_date, end_d
 		return totalBalances, nil
 	}
 
-	stmt := psql.Raw(`WITH date_range AS (
-        SELECT ?::date AS start_date, ?::date AS end_date
-    )
-    SELECT
-        a.ledger,
-        COALESCE(
-            SUM(CASE WHEN t.date < dr.start_date THEN a.amount END), 0
-        ) AS opening_balance,
-        COALESCE(
-            SUM(CASE WHEN t.date <= dr.end_date THEN a.amount END), 0
-        ) AS closing_balance,
-        COALESCE(
-            SUM(CASE WHEN t.date BETWEEN dr.start_date AND dr.end_date AND a.amount > 0 THEN a.amount END), 0
-        ) AS total_net_debit,
-        COALESCE(
-            SUM(CASE WHEN t.date BETWEEN dr.start_date AND dr.end_date AND a.amount < 0 THEN a.amount END), 0
-        ) AS total_net_credit
-    FROM
-        trn_accounting a
-        JOIN trn_voucher t ON a.guid = t.guid
-        CROSS JOIN date_range dr
-    WHERE
-        a.ledger = ANY(?)
-    GROUP BY
-        a.ledger
-    ORDER BY
-        opening_balance DESC;`, start_date, end_date, ledger_ids)
+	query := `
+WITH date_range AS (
+    SELECT ?::date AS start_date, ?::date AS end_date
+)
+SELECT
+    a.ledger,
+    COALESCE(SUM(CASE WHEN t.date < dr.start_date THEN a.amount END), 0) AS opening_balance,
+    COALESCE(SUM(CASE WHEN t.date <= dr.end_date THEN a.amount END), 0) AS closing_balance,
+    COALESCE(SUM(CASE WHEN t.date BETWEEN dr.start_date AND dr.end_date AND a.amount > 0 THEN a.amount END), 0) AS total_net_debit,
+    COALESCE(SUM(CASE WHEN t.date BETWEEN dr.start_date AND dr.end_date AND a.amount < 0 THEN a.amount END), 0) AS total_net_credit
+FROM
+    trn_accounting a
+    JOIN trn_voucher t ON a.guid = t.guid
+    CROSS JOIN date_range dr
+WHERE
+    a.ledger = ANY(?)
+`
+
+	args := []interface{}{start_date, end_date, pq.Array(ledger_ids)}
+
+	if params.SkipVouchers != nil {
+		query += ` AND t.guid  <> ALL(?)`
+		args = append(args, pq.Array(params.SkipVouchers))
+	}
+
+	query += `
+		GROUP BY
+    a.ledger
+		ORDER BY
+    opening_balance DESC
+	`
+
+	stmt := psql.Raw(query, args...)
 
 	var totalBalance = []TotalBalance{}
 
-	err := pgxscan.Select(ctx, db.GetDB(), &totalBalance, stmt.String(), start_date, end_date, ledger_ids)
+	err := pgxscan.Select(ctx, db.GetDB(), &totalBalance, stmt.String(), args...)
 
 	if err != nil {
 		return totalBalances, err
@@ -245,7 +267,11 @@ func FetchLedgerHandler(c *gin.Context) {
 		ledgerIds = append(ledgerIds, ledger.Name)
 	}
 
-	totalBalances, err := getTotalBalance(ctx, ledgerIds, queryParams.StartDate, queryParams.EndDate)
+	totalBalances, err := getTotalBalance(ctx, TotalBalanceParams{
+		StartDate: queryParams.StartDate,
+		EndDate:   queryParams.EndDate,
+		LedgerIDs: ledgerIds,
+	})
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error":   err.Error(),

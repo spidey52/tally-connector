@@ -38,7 +38,7 @@ type CreateSalesVoucherDto struct {
 // ---------------------- Globals ----------------------
 
 var client = &http.Client{}
-var tallyEndpoint = "http://100.77.107.9:9000"
+var tallyEndpoint = "http://172.16.0.47:9000"
 
 // ---------------------- Helper functions ----------------------
 
@@ -107,8 +107,13 @@ func callTallyApi(ctx context.Context, env tallyxml.Envelope) error {
 	if err != nil {
 		return err
 	}
+
 	log.Println("---- Request XML ----")
 	log.Println(string(xmlData))
+
+	// if 120%5 == 0 {
+	// 	return nil
+	// }
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tallyEndpoint, bytes.NewReader(xmlData))
 	if err != nil {
@@ -139,10 +144,6 @@ func callTallyApi(ctx context.Context, env tallyxml.Envelope) error {
 
 	log.Printf("Tally Response Parsed: %+v\n", tallyResp)
 
-	if tallyResp.Created == 0 {
-		return fmt.Errorf("tally did not create the voucher, response: %+v", tallyResp)
-	}
-
 	return nil
 }
 
@@ -151,13 +152,17 @@ func callTallyApi(ctx context.Context, env tallyxml.Envelope) error {
 func CreateSalesVoucher(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	var dto CreateSalesVoucherDto
+	var dto []CreateSalesVoucherDto
 	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
 
-	voucher := buildVoucher(dto)
+	// voucher := buildVoucher(dto)
+	var vouchers []tallyxml.SaleVoucher
+	for _, d := range dto {
+		vouchers = append(vouchers, buildVoucher(d))
+	}
 
 	env := tallyxml.Envelope{
 		Header: tallyxml.Header{TallyRequest: "Import Data"},
@@ -165,7 +170,7 @@ func CreateSalesVoucher(c *gin.Context) {
 			ImportData: tallyxml.ImportData{
 				RequestDesc: tallyxml.RequestDesc{ReportName: "Vouchers"},
 				RequestData: tallyxml.RequestData{
-					TallyMessage: tallyxml.TallyMessage{Voucher: &voucher},
+					TallyMessage: tallyxml.TallyMessage{Voucher: &vouchers},
 				},
 			},
 		},
