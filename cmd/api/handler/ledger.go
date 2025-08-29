@@ -35,6 +35,14 @@ func getOpeningBalance(ctx context.Context, ledger_ids []string) (map[string]flo
 
 	return openingBalances, nil
 }
+func GetTotal(id string) {
+	result, err := getTotalBalance(context.Background(), []string{id}, "2025-01-01", "2025-12-31")
+	if err != nil {
+		log.Println("Error fetching total balance:", err)
+		return
+	}
+	log.Println("Total balance for", id, ":", result)
+}
 
 func getTotalBalance(ctx context.Context, ledger_ids []string, start_date, end_date string) (map[string]TotalBalance, error) {
 
@@ -93,6 +101,24 @@ func getTotalBalance(ctx context.Context, ledger_ids []string, start_date, end_d
 		}
 
 		totalBalances[balance.LedgerName] = totalBalance[idx]
+	}
+
+	// loop on ledger ids.. if it's not in totalBalances, initialize it
+	for _, ledgerID := range ledger_ids {
+		// if it's not in totalBalances
+		if _, ok := totalBalances[ledgerID]; ok {
+			continue
+		}
+
+		// assign opening and closing balance to initial opening balance
+		if _, ok := openingBalances[ledgerID]; ok {
+			totalBalances[ledgerID] = TotalBalance{
+				LedgerName:     ledgerID,
+				OpeningBalance: openingBalances[ledgerID],
+				ClosingBalance: openingBalances[ledgerID],
+			}
+		}
+
 	}
 
 	return totalBalances, nil
@@ -276,4 +302,24 @@ func FetchLedgerAutoComplete(c *gin.Context) {
 
 	c.JSON(200, gin.H{"ledgers": ledgers})
 
+}
+
+func AlterLedger(c *gin.Context) {
+	type RequestBody struct {
+		Guid        string `json:"guid" binding:"required"`
+		Name        string `json:"name" binding:"required"`
+		Alias       string `json:"alias"`
+		Description string `json:"description"`
+	}
+
+	var reqBody RequestBody
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
+		c.JSON(400, gin.H{
+			"error":   err.Error(),
+			"message": "Invalid request body",
+		})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "Ledger updated successfully"})
 }
