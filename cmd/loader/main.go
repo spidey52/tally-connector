@@ -218,7 +218,18 @@ func main() {
 	server := gin.Default()
 
 	server.POST("/sync", func(c *gin.Context) {
-		ImportAll()
+
+		type SyncDto struct {
+			Filters []string `json:"filters"`
+		}
+
+		var dto SyncDto
+		if err := c.ShouldBindJSON(&dto); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		ImportAll(dto.Filters...)
 		c.JSON(200, gin.H{
 			"status": "import completed",
 		})
