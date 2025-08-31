@@ -26,11 +26,11 @@ type RequestDesc struct {
 }
 
 type RequestData struct {
-	XMLName      xml.Name `xml:"REQUESTDATA"`
-	TallyMessage any      `xml:"TALLYMESSAGE"`
+	XMLName      xml.Name     `xml:"REQUESTDATA"`
+	TallyMessage TallyMessage `xml:"TALLYMESSAGE"`
 }
 
-type Voucher struct {
+type TallyVoucher struct {
 	XMLName         xml.Name `xml:"VOUCHER"`
 	Action          string   `xml:"ACTION,attr"`
 	Date            string   `xml:"DATE"`
@@ -41,7 +41,7 @@ type Voucher struct {
 }
 
 type LedgerEntry struct {
-	XMLName    xml.Name `xml:"LEDGER"`
+	XMLName    xml.Name `xml:"ALLLEDGERENTRIES.LIST"`
 	LedgerName string   `xml:"LEDGERNAME"`
 	IsPositive string   `xml:"ISDEEMEDPOSITIVE"`
 	Amount     string   `xml:"AMOUNT"`
@@ -49,10 +49,7 @@ type LedgerEntry struct {
 
 // This is where we allow flexibility
 type TallyMessage struct {
-	Voucher *[]SaleVoucher `xml:"VOUCHER,omitempty"`
-	// Ledger    *Ledger    `xml:"LEDGER,omitempty"`
-	// StockItem *StockItem `xml:"STOCKITEM,omitempty"`
-	// add more types later if needed
+	Voucher any `xml:"VOUCHER,omitempty"`
 }
 
 type TallyResponse struct {

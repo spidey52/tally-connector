@@ -65,6 +65,8 @@ func main() {
 	r.GET("/fetch-voucher-type", handler.FetchVoucherTypeHandler)
 
 	r.POST("/sales-voucher", handler.CreateSalesVoucher)
+	r.POST("/payment-voucher", handler.CreatePaymentVoucher)
+	r.POST("/validate-voucher", handler.ValidateVouchers)
 
 	syncTableGroup := r.Group("/sync-tables")
 	syncTableGroup.GET("", handler.GetSyncTables)
