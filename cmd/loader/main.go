@@ -74,9 +74,8 @@ func parseDate(str string) time.Time {
 
 var client = &http.Client{}
 
-var tallyEndpoint = env.TallyEndpoint
-
 func callTallyApi(ctx context.Context, xmlData []byte) (string, error) {
+	var tallyEndpoint = env.TallyEndpoint
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tallyEndpoint, bytes.NewReader(xmlData))
 	if err != nil {
 		return "", err
