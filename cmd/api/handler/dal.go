@@ -67,7 +67,7 @@ func FetchDal(c *gin.Context) {
 		sm.InnerJoin("trn_voucher tv_in").
 			On(psql.Quote("tv_in", "guid").EQ(psql.Quote("a", "guid"))),
 		sm.Where(psql.Quote("a", "ledger").EQ(psql.Arg(ledgerID))),
-		sm.Where(psql.Quote("tv_in", "date").GTE(psql.Arg(queryParams.StartDate)).And(psql.Quote("tv_in", "date").LT(psql.Arg(queryParams.EndDate)))),
+		sm.Where(psql.Quote("tv_in", "date").GTE(psql.Arg(queryParams.StartDate)).And(psql.Quote("tv_in", "date").LTE(psql.Arg(queryParams.EndDate)))),
 	)
 
 	if voucherType != "" {
