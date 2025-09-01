@@ -22,7 +22,7 @@ type TallyProducts struct {
 	Name     string  `json:"name" binding:"required"`
 	Rate     float64 `json:"rate" binding:"required"`
 	Amount   float64 `json:"amount" binding:"required"`
-	Quantity int     `json:"quantity" binding:"required"`
+	Quantity float64 `json:"quantity" binding:"required"`
 }
 
 type TallyDiscounts struct {
