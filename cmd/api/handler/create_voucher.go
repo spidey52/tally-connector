@@ -224,6 +224,7 @@ func CreateSalesVoucher(c *gin.Context) {
 
 	var vouchers []tallyxml.SaleVoucher
 	for idx, d := range dto {
+		// dto[idx].PartyName = ledgerMap[d.PartyName]
 		dto[idx].PartyName = ledgerMap[d.PartyName]
 		vouchers = append(vouchers, buildSaleVoucher(d))
 	}
