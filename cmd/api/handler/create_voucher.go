@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"tally-connector/internal/db"
+	"tally-connector/internal/helper"
 	"tally-connector/internal/models"
 	"tally-connector/internal/tallyxml"
 
@@ -64,8 +65,8 @@ func buildSaleVoucher(dto CreateSalesVoucherDto) tallyxml.SaleVoucher {
 			StockItemName: p.Name,
 			Rate:          fmt.Sprintf("%.2f", p.Rate),
 			Amount:        fmt.Sprintf("%.2f", p.Amount),
-			ActualQty:     fmt.Sprintf("%d", p.Quantity),
-			BilledQty:     fmt.Sprintf("%d", p.Quantity),
+			ActualQty:     fmt.Sprintf("%.2f", p.Quantity),
+			BilledQty:     fmt.Sprintf("%.2f", p.Quantity),
 			IsPositive:    "No",
 			Allocations: []tallyxml.SaleAccountingAlloc{
 				{
@@ -217,9 +218,13 @@ func CreateSalesVoucher(c *gin.Context) {
 		return
 	}
 
-	// voucher := buildVoucher(dto)
+	// ledgerMap := ledger
+
+	ledgerMap := helper.LedgerMapByAlias()
+
 	var vouchers []tallyxml.SaleVoucher
-	for _, d := range dto {
+	for idx, d := range dto {
+		dto[idx].PartyName = ledgerMap[d.PartyName]
 		vouchers = append(vouchers, buildSaleVoucher(d))
 	}
 
