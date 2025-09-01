@@ -213,6 +213,7 @@ func ImportAll(filters ...string) {
 func main() {
 	db.ConnectDB(env.PostgresURL)
 	models.CreateSyncTables()
+	go SeedSyncTables(context.Background())
 
 	gin.SetMode(gin.ReleaseMode)
 	server := gin.Default()
