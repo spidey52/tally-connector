@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"tally-connector/internal/db"
 	"tally-connector/internal/helper"
 	"tally-connector/internal/models"
@@ -48,7 +49,8 @@ type CreateSalesVoucherDto struct {
 // ---------------------- Globals ----------------------
 
 var client = &http.Client{}
-var tallyEndpoint = "http://172.16.0.47:9000"
+
+// var tallyEndpoint = "http://172.16.0.47:9000"
 
 // ---------------------- Helper functions ----------------------
 
@@ -114,13 +116,14 @@ func buildSaleVoucher(dto CreateSalesVoucherDto) tallyxml.SaleVoucher {
 }
 
 func callTallyApi(ctx context.Context, env tallyxml.Envelope) error {
+	tallyEndpoint := os.Getenv("TALLY_ENDPOINT")
 	xmlData, err := xml.MarshalIndent(env, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	log.Println("---- Request XML ----")
-	log.Println(string(xmlData))
+	// log.Println("---- Request XML ----")
+	// log.Println(string(xmlData))
 
 	// if 120%5 == 0 {
 	// 	return nil
@@ -223,9 +226,9 @@ func CreateSalesVoucher(c *gin.Context) {
 	ledgerMap := helper.LedgerMapByAlias()
 
 	var vouchers []tallyxml.SaleVoucher
-	for idx, d := range dto {
+	for _, d := range dto {
 		// dto[idx].PartyName = ledgerMap[d.PartyName]
-		dto[idx].PartyName = ledgerMap[d.PartyName]
+		d.PartyName = ledgerMap[d.PartyName]
 		vouchers = append(vouchers, buildSaleVoucher(d))
 	}
 
