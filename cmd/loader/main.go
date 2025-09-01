@@ -16,8 +16,9 @@ import (
 	"tally-connector/internal/models"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/stephenafamo/bob/dialect/psql"
+	"github.com/stephenafamo/bob/dialect/psql/im"
 )
 
 type LoaderEnv struct {
@@ -172,13 +173,6 @@ func importData(ctx context.Context, import_table models.SyncTable) (string, err
 func ImportAll(filters ...string) {
 	tables, err := config.GetMergedTables()
 
-	type Result struct {
-		Error    string  `json:"error,omitempty"`
-		Duration float64 `json:"duration,omitempty"`
-		Table    string  `json:"table,omitempty"`
-	}
-	var results = []Result{}
-
 	if err != nil {
 		log.Printf("Error loading table config: %v", err)
 		return
@@ -193,49 +187,83 @@ func ImportAll(filters ...string) {
 		_, err = importData(context.Background(), models.SyncTable{
 			Name: table.Name,
 		})
-		duration := time.Since(start)
+		// duration := time.Since(start)
 
-		var res = Result{
-			Error:    "",
-			Duration: duration.Seconds(),
-			Table:    table.Name,
+		var res = models.SyncLog{
+			Table:     table.Name,
+			Group:     table.Name,
+			StartTime: start,
+			EndTime:   time.Now(),
+			Duration:  time.Since(start).Seconds(),
+			Status:    "success",
+			Message:   "",
 		}
 
 		if err != nil {
-			res.Error = err.Error()
+			res.Status = "failed"
+			res.Message = err.Error()
 		}
-		results = append(results, res)
+
+		q := psql.Insert(
+			im.Into("tbl_sync_logs"),
+			im.Values(
+				psql.Arg(res.Table, res.Group, res.StartTime, res.EndTime, res.Duration, res.Status, res.Message),
+			),
+		)
+
+		query, args, err := q.Build(context.Background())
+
+		if err != nil {
+			log.Printf("Error building query: %v", err)
+			return
+		}
+
+		_, err = db.GetDB().Exec(context.Background(), query, args...)
+		if err != nil {
+			log.Printf("Error executing query: %v", err)
+			return
+		}
+
 	}
-	WriteToFile("import_summary.json", results)
 
 }
 
 func main() {
 	db.ConnectDB(env.PostgresURL)
-	models.CreateSyncTables()
-	go SeedSyncTables(context.Background())
+	ProcessImportQueue()
 
-	gin.SetMode(gin.ReleaseMode)
-	server := gin.Default()
+	// gin.SetMode(gin.ReleaseMode)
+	// server := gin.Default()
 
-	server.POST("/sync", func(c *gin.Context) {
+	// server.POST("/seed-tables", func(c *gin.Context) {
+	// 	models.CreateSyncTables()
+	// 	SeedSyncTables(context.Background())
+	// 	c.JSON(200, gin.H{"status": "tables created"})
+	// })
 
-		type SyncDto struct {
-			Filters []string `json:"filters"`
-		}
+	// server.POST("/sync", func(c *gin.Context) {
+	// 	type SyncDto struct {
+	// 		Filters []string `json:"filters"`
+	// 	}
 
-		var dto SyncDto
-		if err := c.ShouldBindJSON(&dto); err != nil {
-			c.JSON(400, gin.H{"error": err.Error()})
-			return
-		}
+	// 	var dto SyncDto
+	// 	if err := c.ShouldBindJSON(&dto); err != nil {
+	// 		c.JSON(400, gin.H{"error": err.Error()})
+	// 		return
+	// 	}
 
-		ImportAll(dto.Filters...)
-		c.JSON(200, gin.H{
-			"status": "import completed",
-		})
-	})
+	// 	if len(dto.Filters) == 0 {
+	// 		c.JSON(400, gin.H{"error": "no filters provided", "message": "please provide at least one filter"})
+	// 		return
+	// 	}
 
-	log.Println("Starting server on :8081")
-	server.Run(":8081")
+	// 	redisclient.GetRedisClient().LPush(context.Background(), redisclient.ImportQueueKey, dto.Filters)
+
+	// 	c.JSON(200, gin.H{
+	// 		"status": "added in import queue",
+	// 	})
+	// })
+
+	// log.Println("Starting server on :8081")
+	// server.Run(":8081")
 }

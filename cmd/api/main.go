@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"tally-connector/cmd/api/handler"
 	"tally-connector/cmd/api/middlewares"
 	"tally-connector/internal/db"
+	"tally-connector/internal/redisclient"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -68,8 +70,35 @@ func main() {
 	r.POST("/payment-voucher", handler.CreatePaymentVoucher)
 	r.POST("/validate-voucher", handler.ValidateVouchers)
 
-	syncTableGroup := r.Group("/sync-tables")
-	syncTableGroup.GET("", handler.GetSyncTables)
+	r.POST("/sync", func(c *gin.Context) {
+		type SyncDto struct {
+			Filters []string `json:"filters"`
+		}
+
+		var dto SyncDto
+		if err := c.ShouldBindJSON(&dto); err != nil {
+			c.JSON(400, gin.H{"error": err.Error()})
+			return
+		}
+
+		if len(dto.Filters) == 0 {
+			c.JSON(400, gin.H{"error": "no filters provided", "message": "please provide at least one filter"})
+			return
+		}
+
+		redisclient.GetRedisClient().LPush(context.Background(), redisclient.ImportQueueKey, dto.Filters)
+
+		c.JSON(200, gin.H{
+			"status": "added in import queue",
+		})
+	})
+
+	loader := r.Group("/loader")
+	loader.GET("/tables", handler.GetSyncTables)
+	loader.GET("logs", handler.GetSyncLogs)
+	loader.POST("/seed", handler.SeedSyncTables)
+
+	// loader.POST("", handler.CreateSyncTable)
 
 	port := flag.Int("port", 8080, "Port to run the server on")
 	flag.Parse()
