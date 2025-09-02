@@ -2,9 +2,12 @@ package handler
 
 import (
 	"context"
+	"encoding/xml"
 	"log"
 	"tally-connector/api/middlewares"
+	"tally-connector/config"
 	"tally-connector/internal/db"
+	"tally-connector/internal/loader"
 	"tally-connector/internal/models"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
@@ -349,3 +352,97 @@ func AlterLedger(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "Ledger updated successfully"})
 }
+
+func CreateLedgerHandler(c *gin.Context) {
+	type RequestBody struct {
+		Name       string `json:"name" binding:"required"`
+		Alias      string `json:"alias" binding:"required"`
+		Parent     string `json:"parent" binding:"required"`
+		IsPositive string `json:"is_positive" binding:"required"`
+	}
+
+	var reqBody RequestBody
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
+		c.JSON(400, gin.H{
+			"error":   err.Error(),
+			"message": "Invalid request body",
+		})
+		return
+	}
+	ctx := c.Request.Context()
+
+	type Envelope struct {
+		HEADER struct {
+			VERSION      string `json:"VERSION" xml:"VERSION"`
+			TALLYREQUEST string `json:"TALLYREQUEST" xml:"TALLYREQUEST"`
+			TYPE         string `json:"TYPE" xml:"TYPE"`
+			ID           string `json:"ID" xml:"ID"`
+		} `json:"HEADER" xml:"HEADER"`
+		BODY struct {
+			DESC struct {
+				STATICVARIABLES struct {
+					SVCURRENTCOMPANY string `json:"SVCURRENTCOMPANY" xml:"SVCURRENTCOMPANY"`
+				} `json:"STATICVARIABLES" xml:"STATICVARIABLES"`
+			} `json:"DESC" xml:"DESC"`
+			DATA struct {
+				TALLYMESSAGE struct {
+					LEDGER struct {
+						PARENT           string `json:"PARENT" xml:"PARENT"`
+						ISDEEMEDPOSITIVE string `json:"ISDEEMEDPOSITIVE" xml:"ISDEEMEDPOSITIVE"`
+						NAMELIST         struct {
+							NAME []string `json:"NAME" xml:"NAME"`
+							TYPE string   `json:"-" xml:"TYPE,attr"`
+						} `json:"NAME.LIST" xml:"NAME.LIST"`
+						ACTION string `json:"-" xml:"ACTION,attr"`
+					} `json:"LEDGER" xml:"LEDGER"`
+				} `json:"TALLYMESSAGE" xml:"TALLYMESSAGE"`
+			} `json:"DATA" xml:"DATA"`
+		} `json:"BODY" xml:"BODY"`
+	}
+
+	config, _ := config.LoadConfig()
+
+	var env Envelope
+	env.HEADER.VERSION = "1"
+	env.HEADER.TALLYREQUEST = "Import"
+	env.HEADER.TYPE = "Data"
+	env.HEADER.ID = "All Masters"
+	env.BODY.DESC.STATICVARIABLES.SVCURRENTCOMPANY = config.Tally.Company
+	env.BODY.DATA.TALLYMESSAGE.LEDGER.PARENT = reqBody.Parent
+	env.BODY.DATA.TALLYMESSAGE.LEDGER.NAMELIST.NAME = []string{reqBody.Name, reqBody.Alias}
+	env.BODY.DATA.TALLYMESSAGE.LEDGER.ISDEEMEDPOSITIVE = reqBody.IsPositive
+	env.BODY.DATA.TALLYMESSAGE.LEDGER.NAMELIST.TYPE = "String"
+	env.BODY.DATA.TALLYMESSAGE.LEDGER.ACTION = "Create"
+
+	marshal, err := xml.Marshal(env)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error":   err.Error(),
+			"message": "Failed to marshal XML",
+		})
+		return
+	}
+
+	result, err := loader.CallTallyApi(ctx, marshal)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error":   err.Error(),
+			"message": "Failed to call Tally API",
+		})
+		return
+	}
+
+	log.Println("Tally API Response:", string(result))
+	loader.ImportAll("mst_ledger")
+
+	c.JSON(200, gin.H{"message": "Ledger created successfully"})
+
+}
+/*
+	1.
+
+
+	2.
+*/
