@@ -1,4 +1,4 @@
-package main
+package loader
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
-	"tally-connector/cmd/loader/config"
+	"tally-connector/config"
 	"tally-connector/internal/db"
 	"time"
 

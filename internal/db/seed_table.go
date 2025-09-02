@@ -1,11 +1,10 @@
-package main
+package db
 
 import (
 	"context"
 	"log"
 	"slices"
-	"tally-connector/cmd/loader/config"
-	"tally-connector/internal/db"
+	"tally-connector/config"
 
 	"github.com/georgysavva/scany/v2/pgxscan"
 	"github.com/stephenafamo/bob/dialect/psql"
@@ -27,7 +26,7 @@ func SeedSyncTables(ctx context.Context) {
 
 	// existing tables.
 	var existing_tables []string
-	err = pgxscan.Select(ctx, db.GetDB(), &existing_tables, "SELECT table_name FROM tbl_sync_tables")
+	err = pgxscan.Select(ctx, GetDB(), &existing_tables, "SELECT table_name FROM tbl_sync_tables")
 
 	if err != nil {
 		log.Printf("Error fetching existing tables: %v", err)
@@ -63,7 +62,7 @@ func SeedSyncTables(ctx context.Context) {
 
 	log.Println("Built query:", query)
 
-	_, err = db.GetDB().Exec(ctx, query, args...)
+	_, err = GetDB().Exec(ctx, query, args...)
 
 	if err != nil {
 		log.Printf("Error seeding sync tables: %v", err)

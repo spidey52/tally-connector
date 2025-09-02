@@ -2,7 +2,7 @@ package handler
 
 import (
 	"math"
-	"tally-connector/cmd/api/middlewares"
+	"tally-connector/api/middlewares"
 	"tally-connector/internal/db"
 	"time"
 

@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"tally-connector/cmd/api/handler"
-	"tally-connector/cmd/api/middlewares"
+	"tally-connector/api/handler"
+	"tally-connector/api/middlewares"
 	"tally-connector/internal/db"
+	"tally-connector/internal/loader"
 	"tally-connector/internal/redisclient"
 	"time"
 
@@ -72,7 +73,8 @@ func main() {
 
 	r.POST("/sync", func(c *gin.Context) {
 		type SyncDto struct {
-			Filters []string `json:"filters"`
+			Filters []string `json:"filters" oneof:"sync,async"`
+			Mode    string   `json:"mode"`
 		}
 
 		var dto SyncDto
@@ -86,10 +88,19 @@ func main() {
 			return
 		}
 
+		if dto.Mode == "sync" {
+			loader.ImportAll(dto.Filters...)
+
+			c.JSON(200, gin.H{
+				"message": "sync completed",
+			})
+			return
+		}
+
 		redisclient.GetRedisClient().LPush(context.Background(), redisclient.ImportQueueKey, dto.Filters)
 
 		c.JSON(200, gin.H{
-			"status": "added in import queue",
+			"message": "added in import queue",
 		})
 	})
 

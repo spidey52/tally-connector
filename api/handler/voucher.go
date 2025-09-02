@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 	"log"
-	"tally-connector/cmd/api/middlewares"
+	"tally-connector/api/middlewares"
 	"tally-connector/internal/db"
 	"tally-connector/internal/models"
 
