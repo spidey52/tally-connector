@@ -75,7 +75,7 @@ func parseDate(str string) time.Time {
 
 var client = &http.Client{}
 
-func callTallyApi(ctx context.Context, xmlData []byte) (string, error) {
+func CallTallyApi(ctx context.Context, xmlData []byte) (string, error) {
 	var tallyEndpoint = env.TallyEndpoint
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tallyEndpoint, bytes.NewReader(xmlData))
 	if err != nil {
@@ -153,7 +153,7 @@ func importData(ctx context.Context, import_table models.SyncTable) (string, err
 	reqCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
 
-	val, err := callTallyApi(reqCtx, []byte(result))
+	val, err := CallTallyApi(reqCtx, []byte(result))
 
 	if err != nil {
 		log.Printf("Error calling Tally API: %v", err.Error())

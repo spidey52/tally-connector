@@ -186,15 +186,15 @@ func buildPaymentVoucher(dto CreatePaymentVoucherDto) tallyxml.PaymentVoucher {
 			{
 				LedgerEntry: tallyxml.LedgerEntry{
 					LedgerName: dto.PartyName,
-					IsPositive: "Yes",
-					Amount:     fmt.Sprintf("%.2f", -dto.Amount),
+					IsPositive: "No",
+					Amount:     fmt.Sprintf("%.2f", dto.Amount),
 				},
 			},
 			{
 				LedgerEntry: tallyxml.LedgerEntry{
 					LedgerName: dto.TargetBank,
-					IsPositive: "No",
-					Amount:     fmt.Sprintf("%.2f", dto.Amount),
+					IsPositive: "Yes",
+					Amount:     fmt.Sprintf("%.2f", -dto.Amount),
 				},
 				Allocations: []tallyxml.BankAllocations{
 					{
@@ -202,7 +202,7 @@ func buildPaymentVoucher(dto CreatePaymentVoucherDto) tallyxml.PaymentVoucher {
 						InstrumentDate:  dto.Date,
 						TransactionType: "Cheque",
 						BankPartyName:   dto.PartyName,
-						Amount:          dto.Amount,
+						Amount:          -dto.Amount,
 					},
 				},
 			},

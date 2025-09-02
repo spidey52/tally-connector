@@ -10,7 +10,7 @@ all: build
 # Build API for production
 build-api:
 	@mkdir -p $(BIN_DIR)
-	go build -o $(BIN_DIR)/$(APP_NAME) cmd/api/main.go
+	go build -o $(BIN_DIR)/$(APP_NAME) .
 
 # Build all (if you have multiple apps later)
 build: build-api

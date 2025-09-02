@@ -57,6 +57,8 @@ func main() {
 	r.Use(middlewares.InsertPaginationParams)
 
 	r.GET("/fetch-ledgers", handler.FetchLedgerHandler)
+	r.GET("/fetch-groups", handler.FetchGroupHandler)
+	r.POST("/create-ledger", handler.CreateLedgerHandler)
 	r.GET("/fetch-ledgers-autocomplete", handler.FetchLedgerAutoComplete)
 
 	r.GET("/fetch-vouchers", handler.FetchVoucherHandler)

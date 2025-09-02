@@ -10,6 +10,9 @@ type Envelope struct {
 
 type Header struct {
 	TallyRequest string `xml:"TALLYREQUEST"`
+	Type         string `xml:"TYPE,omitempty"`
+	Id           string `xml:"ID,omitempty"`
+	Version      string `xml:"VERSION,omitempty"`
 }
 
 type Body struct {
