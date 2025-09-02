@@ -86,7 +86,7 @@ func main() {
 			return
 		}
 
-		if dto.Mode == "sync" {
+		if dto.Mode == "sync" || dto.Mode == "" {
 			loader.ImportAll(dto.Filters...)
 
 			c.JSON(200, gin.H{
