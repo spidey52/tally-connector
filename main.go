@@ -74,6 +74,7 @@ func main() {
 	r.POST("/sync", func(c *gin.Context) {
 		type SyncDto struct {
 			Filters []string `json:"filters" oneof:"sync,async"`
+			IsAll   bool     `json:"is_all"`
 			Mode    string   `json:"mode"`
 		}
 
@@ -83,17 +84,17 @@ func main() {
 			return
 		}
 
-		if len(dto.Filters) == 0 {
-			c.JSON(400, gin.H{"error": "no filters provided", "message": "please provide at least one filter"})
-			return
-		}
-
 		if dto.Mode == "sync" {
 			loader.ImportAll(dto.Filters...)
 
 			c.JSON(200, gin.H{
 				"message": "sync completed",
 			})
+			return
+		}
+
+		if len(dto.Filters) == 0 {
+			c.JSON(400, gin.H{"error": "no filters provided", "message": "please provide at least one filter"})
 			return
 		}
 
