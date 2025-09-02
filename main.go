@@ -9,6 +9,7 @@ import (
 	"tally-connector/api/handler"
 	"tally-connector/api/middlewares"
 	"tally-connector/internal/db"
+	"tally-connector/internal/jobs"
 	"tally-connector/internal/loader"
 	"tally-connector/internal/redisclient"
 	"time"
