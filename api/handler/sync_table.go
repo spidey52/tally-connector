@@ -189,7 +189,9 @@ func GetSyncLogs(c *gin.Context) {
 }
 
 func SeedSyncTables(c *gin.Context) {
-
+	ctx := c.Request.Context()
+	models.CreateSyncTables()
+	db.SeedSyncTables(ctx)
 	c.JSON(201, gin.H{
 		"status":  "success",
 		"message": "sync table created successfully",

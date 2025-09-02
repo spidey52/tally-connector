@@ -80,7 +80,8 @@ func CreateSyncTables() {
     start_time timestamp not null,
     end_time timestamp not null,
     duration integer not null,
-    status varchar(50) not null
+    status varchar(50) not null,
+    message text not null default ''
   );
 
 */
