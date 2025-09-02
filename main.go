@@ -37,6 +37,7 @@ func init() {
 
 func main() {
 	db.ConnectDB(env.PostgresURL)
+	go jobs.ProcessImportQueue()
 
 	r := gin.Default()
 
