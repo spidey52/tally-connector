@@ -107,8 +107,22 @@ func main() {
 	r.GET("/sync-jobs", func(c *gin.Context) {
 		jobsList := jobs.GetDefaultWorkerPool().GetJobs()
 
+		var inqueue int
+		var processing int
+
+		for _, job := range jobsList {
+			switch job.Status {
+			case "queued":
+				inqueue++
+			case "processing":
+				processing++
+			}
+		}
+
 		c.JSON(200, gin.H{
-			"jobs": jobsList,
+			"inqueue":    inqueue,
+			"processing": processing,
+			"jobs":       jobsList,
 		})
 	})
 
