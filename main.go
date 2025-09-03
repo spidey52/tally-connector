@@ -126,7 +126,7 @@ func main() {
 		})
 	})
 
-	loaderRoutes := r.Group("/loaderRoutes")
+	loaderRoutes := r.Group("/loader")
 	loaderRoutes.GET("/tables", handler.GetSyncTables)
 	loaderRoutes.GET("logs", handler.GetSyncLogs)
 	loaderRoutes.POST("/seed", handler.SeedSyncTables)
