@@ -10,8 +10,6 @@ import (
 	"tally-connector/api/middlewares"
 	"tally-connector/internal/db"
 	"tally-connector/internal/jobs"
-	"tally-connector/internal/loader"
-	"tally-connector/internal/redisclient"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -38,7 +36,9 @@ func init() {
 
 func main() {
 	db.ConnectDB(env.PostgresURL)
-	go jobs.ProcessImportQueue()
+
+	var ctx = context.Background()
+	go jobs.ProcessImportQueue(ctx)
 
 	r := gin.Default()
 
@@ -78,7 +78,6 @@ func main() {
 	r.POST("/sync", func(c *gin.Context) {
 		type SyncDto struct {
 			Filters []string `json:"filters" oneof:"sync,async"`
-			IsAll   bool     `json:"is_all"`
 			Mode    string   `json:"mode"`
 		}
 
@@ -88,33 +87,35 @@ func main() {
 			return
 		}
 
-		if dto.Mode == "sync" || dto.Mode == "" {
-			loader.ImportAll(dto.Filters...)
-
-			c.JSON(200, gin.H{
-				"message": "sync completed",
-			})
-			return
-		}
-
 		if len(dto.Filters) == 0 {
 			c.JSON(400, gin.H{"error": "no filters provided", "message": "please provide at least one filter"})
 			return
 		}
 
-		redisclient.GetRedisClient().LPush(context.Background(), redisclient.ImportQueueKey, dto.Filters)
+		for _, filter := range dto.Filters {
+			jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
+				ID:     filter,
+				Status: "queued",
+			})
+		}
 
 		c.JSON(200, gin.H{
 			"message": "added in import queue",
 		})
 	})
 
-	loader := r.Group("/loader")
-	loader.GET("/tables", handler.GetSyncTables)
-	loader.GET("logs", handler.GetSyncLogs)
-	loader.POST("/seed", handler.SeedSyncTables)
+	r.GET("/sync-jobs", func(c *gin.Context) {
+		jobsList := jobs.GetDefaultWorkerPool().GetJobs()
 
-	// loader.POST("", handler.CreateSyncTable)
+		c.JSON(200, gin.H{
+			"jobs": jobsList,
+		})
+	})
+
+	loaderRoutes := r.Group("/loaderRoutes")
+	loaderRoutes.GET("/tables", handler.GetSyncTables)
+	loaderRoutes.GET("logs", handler.GetSyncLogs)
+	loaderRoutes.POST("/seed", handler.SeedSyncTables)
 
 	port := flag.Int("port", 8080, "Port to run the server on")
 	flag.Parse()
@@ -136,8 +137,5 @@ func main() {
 	mst group
 	mst godown
 	mst cost category
-
-
-
 
 */
