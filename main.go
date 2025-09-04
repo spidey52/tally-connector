@@ -18,10 +18,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const (
-	JobQueueHub = "job-queue"
-)
-
 type LoaderEnv struct {
 	PostgresURL   string `env:"POSTGRES_URL"`
 	TallyEndpoint string `env:"TALLY_ENDPOINT"`
@@ -97,7 +93,7 @@ func main() {
 			return
 		}
 
-		hub := ws.GetHub(JobQueueHub)
+		hub := ws.GetJobQueueHub()
 
 		for _, filter := range dto.Filters {
 			jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
@@ -130,7 +126,7 @@ func main() {
 
 	wsRoutes.GET("/job-queue", func(ctx *gin.Context) {
 		// Handle WebSocket connection for job queue
-		jobQueueHub := ws.GetHub("job-queue")
+		jobQueueHub := ws.GetJobQueueHub()
 		ws.ServeWS(jobQueueHub, ctx.Writer, ctx.Request)
 	})
 

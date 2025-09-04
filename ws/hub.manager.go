@@ -25,8 +25,6 @@ func GetHub(name string) *Hub {
 	return h
 }
 
-// Broadcast sends a message to the named hub (if it exists)
-func Broadcast(name string, msg []byte) {
-	h := GetHub(name) // ensures hub exists
-	h.broadcast <- msg
+func GetJobQueueHub() *Hub {
+	return GetHub("job_queue")
 }
