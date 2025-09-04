@@ -107,7 +107,7 @@ func main() {
 		}
 
 		// broadcast current job_list
-		currentJobs := jobs.GetDefaultWorkerPool().GetJobs()
+		currentJobs := jobs.GetDefaultWorkerPool().GetJobsWithDetails()
 		hub.Broadcast(ws.NewMessage("job_list", currentJobs))
 
 		c.JSON(200, gin.H{

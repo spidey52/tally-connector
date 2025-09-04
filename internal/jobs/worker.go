@@ -52,7 +52,7 @@ func (wp *WorkerPool) AddWorker(ctx context.Context) {
 				hub := ws.GetHub("job-queue")
 
 				hub.Broadcast(ws.NewMessage("job_completed", fmt.Sprintf("Job %s completed", job.ID)))
-				hub.Broadcast(ws.NewMessage("job_list", wp.GetJobs()))
+				hub.Broadcast(ws.NewMessage("job_list", wp.GetJobsWithDetails()))
 			}
 		}
 	}()
