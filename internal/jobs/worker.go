@@ -48,12 +48,12 @@ func (wp *WorkerPool) AddWorker(ctx context.Context) {
 
 				hub := ws.GetJobQueueHub()
 
-				hub.Broadcast(ws.NewMessage("job_list", wp.GetJobsWithDetails()))
+				go hub.Broadcast(ws.NewMessage("job_list", wp.GetJobsWithDetails()))
 				wp.jobHandler(ctx, job)
 				wp.jobStatus.Delete(job.ID)
 
-				hub.Broadcast(ws.NewMessage("job_completed", fmt.Sprintf("Job %s completed", job.ID)))
-				hub.Broadcast(ws.NewMessage("job_list", wp.GetJobsWithDetails()))
+				go hub.Broadcast(ws.NewMessage("job_completed", fmt.Sprintf("Job %s completed", job.ID)))
+				go hub.Broadcast(ws.NewMessage("job_list", wp.GetJobsWithDetails()))
 			}
 		}
 	}()
@@ -74,7 +74,7 @@ func (wp *WorkerPool) AddJob(job *Job) error {
 		log.Printf("Added job with ID %s to queue.\n", job.ID)
 
 		hub := ws.GetJobQueueHub()
-		hub.Broadcast(ws.NewMessage("job_added", fmt.Sprintf("Job %s added to the queue", job.ID)))
+		go hub.Broadcast(ws.NewMessage("job_added", fmt.Sprintf("Job %s added to the queue", job.ID)))
 
 		return nil
 	default:
