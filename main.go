@@ -128,6 +128,8 @@ func main() {
 		// Handle WebSocket connection for job queue
 		jobQueueHub := ws.GetJobQueueHub()
 		ws.ServeWS(jobQueueHub, ctx.Writer, ctx.Request)
+		time.Sleep(1 * time.Second)
+		jobQueueHub.Broadcast(ws.NewMessage("job_list", jobs.GetDefaultWorkerPool().GetJobsWithDetails()))
 	})
 
 	port := flag.Int("port", 8080, "Port to run the server on")

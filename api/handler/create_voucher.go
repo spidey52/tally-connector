@@ -11,6 +11,7 @@ import (
 	"os"
 	"tally-connector/internal/db"
 	"tally-connector/internal/helper"
+	"tally-connector/internal/jobs"
 	"tally-connector/internal/models"
 	"tally-connector/internal/tallyxml"
 
@@ -249,7 +250,23 @@ func CreateSalesVoucher(c *gin.Context) {
 		return
 	}
 
+	AddSyncAfterUpload()
+
 	c.JSON(201, gin.H{"message": "Sales voucher created successfully"})
+}
+
+func AddSyncAfterUpload() {
+	jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
+		ID: "trn_voucher",
+	})
+
+	jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
+		ID: "trn_accounting",
+	})
+
+	jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
+		ID: "trn_inventory",
+	})
 }
 
 type CreatePaymentVoucherDto struct {
@@ -291,6 +308,7 @@ func CreatePaymentVoucher(c *gin.Context) {
 		return
 	}
 
+	AddSyncAfterUpload()
 	c.JSON(201, gin.H{"message": "payment vouchers created successfully"})
 }
 
@@ -370,16 +388,20 @@ type ValidateVoucherDto struct {
 }
 
 func ValidateVouchers(c *gin.Context) {
-	if c.Request.Method != "POST" {
-		c.JSON(405, gin.H{"error": "Method not allowed"})
-		return
-	}
 
 	var dto ValidateVoucherDto
 	if err := c.ShouldBindJSON(&dto); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
+
+	jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
+		ID: "mst_ledger",
+	})
+
+	jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
+		ID: "trn_voucher",
+	})
 
 	ledgers := invalidLedgers(dto.Ledgers)
 	vouchers := existingVouchers(dto.Vouchers)
