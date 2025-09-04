@@ -45,16 +45,8 @@ func (wp *WorkerPool) AddWorker(ctx context.Context) {
 				wp.jobStatus.Store(job.ID, job)
 				log.Printf("Processing job: %s\n", job.ID)
 
-				if err := wp.jobHandler(ctx, job); err != nil {
-					job.Status = "failed"
-					log.Printf("Job %s failed: %v\n", job.ID, err)
-				} else {
-					// job.Status = "completed"
-					wp.jobStatus.Delete(job.ID)
-					log.Printf("Finished job: %s\n", job.ID)
-				}
-
-				wp.jobStatus.Store(job.ID, job)
+				wp.jobHandler(ctx, job)
+				wp.jobStatus.Delete(job.ID)
 			}
 		}
 	}()
