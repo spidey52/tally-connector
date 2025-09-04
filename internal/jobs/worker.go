@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"tally-connector/ws"
 )
 
 type Job struct {
@@ -47,6 +48,11 @@ func (wp *WorkerPool) AddWorker(ctx context.Context) {
 
 				wp.jobHandler(ctx, job)
 				wp.jobStatus.Delete(job.ID)
+
+				hub := ws.GetHub("job-queue")
+
+				hub.Broadcast(ws.NewMessage("job_completed", fmt.Sprintf("Job %s completed", job.ID)))
+				hub.Broadcast(ws.NewMessage("job_list", wp.GetJobs()))
 			}
 		}
 	}()
@@ -65,6 +71,10 @@ func (wp *WorkerPool) AddJob(job *Job) error {
 
 		wp.jobStatus.Store(job.ID, job)
 		log.Printf("Added job with ID %s to queue.\n", job.ID)
+
+		hub := ws.GetHub("job-queue")
+		hub.Broadcast(ws.NewMessage("job_added", fmt.Sprintf("Job %s added to the queue", job.ID)))
+
 		return nil
 	default:
 		return fmt.Errorf("job queue is full")
@@ -87,6 +97,34 @@ func (wp *WorkerPool) GetJobs() []*Job {
 	})
 
 	return jobs
+}
+
+type JobDetails struct {
+	InQueue    int    `json:"inqueue"`
+	Processing int    `json:"processing"`
+	Jobs       []*Job `json:"jobs"`
+}
+
+func (wp *WorkerPool) GetJobsWithDetails() JobDetails {
+	jobs := wp.GetJobs()
+
+	var inqueue int
+	var processing int
+
+	for _, job := range jobs {
+		switch job.Status {
+		case "queued":
+			inqueue++
+		case "processing":
+			processing++
+		}
+	}
+
+	return JobDetails{
+		InQueue:    inqueue,
+		Processing: processing,
+		Jobs:       jobs,
+	}
 }
 
 func (wp *WorkerPool) DeleteJob(jobID string) {

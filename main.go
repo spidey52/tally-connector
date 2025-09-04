@@ -10,11 +10,16 @@ import (
 	"tally-connector/api/middlewares"
 	"tally-connector/internal/db"
 	"tally-connector/internal/jobs"
+	"tally-connector/ws"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+)
+
+const (
+	JobQueueHub = "job-queue"
 )
 
 type LoaderEnv struct {
@@ -92,6 +97,8 @@ func main() {
 			return
 		}
 
+		hub := ws.GetHub(JobQueueHub)
+
 		for _, filter := range dto.Filters {
 			jobs.GetDefaultWorkerPool().AddJob(&jobs.Job{
 				ID:     filter,
@@ -99,37 +106,33 @@ func main() {
 			})
 		}
 
+		// broadcast current job_list
+		currentJobs := jobs.GetDefaultWorkerPool().GetJobs()
+		hub.Broadcast(ws.NewMessage("job_list", currentJobs))
+
 		c.JSON(200, gin.H{
 			"message": "added in import queue",
 		})
 	})
 
 	r.GET("/sync-jobs", func(c *gin.Context) {
-		jobsList := jobs.GetDefaultWorkerPool().GetJobs()
-
-		var inqueue int
-		var processing int
-
-		for _, job := range jobsList {
-			switch job.Status {
-			case "queued":
-				inqueue++
-			case "processing":
-				processing++
-			}
-		}
-
-		c.JSON(200, gin.H{
-			"inqueue":    inqueue,
-			"processing": processing,
-			"jobs":       jobsList,
-		})
+		jobsList := jobs.GetDefaultWorkerPool().GetJobsWithDetails()
+		c.JSON(200, jobsList)
 	})
 
 	loaderRoutes := r.Group("/loader")
 	loaderRoutes.GET("/tables", handler.GetSyncTables)
 	loaderRoutes.GET("logs", handler.GetSyncLogs)
 	loaderRoutes.POST("/seed", handler.SeedSyncTables)
+
+	// ws
+	wsRoutes := r.Group("/ws")
+
+	wsRoutes.GET("/job-queue", func(ctx *gin.Context) {
+		// Handle WebSocket connection for job queue
+		jobQueueHub := ws.GetHub("job-queue")
+		ws.ServeWS(jobQueueHub, ctx.Writer, ctx.Request)
+	})
 
 	port := flag.Int("port", 8080, "Port to run the server on")
 	flag.Parse()
